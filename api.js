@@ -1,6 +1,6 @@
 // The changes_couchdb API
 //
 
-var changes_couchdb = require('./changes_couchdb');
+var feed = require('./feed');
 
-module.exports = changes_couchdb;
+module.exports = feed;
