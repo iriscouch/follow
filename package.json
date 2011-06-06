@@ -1,0 +1,13 @@
+{ "name": "changes_couchdb"
+, "version": "0.1.0"
+, "author": { "name": "Jason Smith"
+            , "email": "jhs@iriscouch.com" }
+, "description": "Extremely robust, fault-tolerant CouchDB changes follower"
+, "homepage": "http://github.com/iriscouch/changes_couchdb"
+, "repository": { "type": "git"
+                , "url": "git://github.com/iriscouch/changes_couchdb" }
+, "engines": [ "node" ]
+, "dependencies" : { "request" : ">=1.9.6"
+                   }
+, "main": "api"
+}
