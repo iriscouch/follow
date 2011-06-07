@@ -138,8 +138,16 @@ Feed.prototype.query = function query_feed() {
   //self.log.debug(lib.JS(req));
 
   var in_flight, timeout_id;
-  function on_changes_response(er, resp) {
+  function response_on_time(er, resp) {
     clearTimeout(timeout_id);
+
+    // Confirm that there is not a newer pending request and this one is unwanted.
+    /*
+    if(self.pending.request !== in_flight) {
+      self.log.debug('Ignoring response from old request');
+      return destroy_response(resp);
+    }
+    */
 
     if(er) {
       self.log.debug('Request error', er);
@@ -152,20 +160,25 @@ Feed.prototype.query = function query_feed() {
     }
 
     self.log.debug('Good changes response');
+    self.retry_delay = 1000;
     return self.prep(in_flight);
   }
 
+  function response_too_late(er, resp) {
+    self.log.debug('Ignoring changes response arriving too late');
+    destroy_response(resp);
+  }
+
+  req.onResponse = response_on_time;
   function on_timeout() {
     self.log.debug('Request timeout');
+    req.onResponse = response_too_late;
     return self.retry();
   }
 
-  self.emit('query');
-
-  req.onResponse = on_changes_response;
   timeout_id = setTimeout(on_timeout, self.heartbeat);
-
   in_flight = request(req);
+  return self.emit('query');
 }
 
 Feed.prototype.prep = function prep_request(req) {
@@ -183,10 +196,6 @@ Feed.prototype.prep = function prep_request(req) {
     var inner_handler = self[name];
 
     function handle_confirmed_req_event() {
-      if(self.pending.request === null)
-        // This is fine, events coming in from old requests.
-        return;
-
       if(self.pending.request === req)
         return inner_handler.apply(self, arguments);
 
@@ -194,8 +203,10 @@ Feed.prototype.prep = function prep_request(req) {
       if(!stamp)
         return self.die(new Error("Received data from unknown request")); // Pretty sure this is impossible.
 
-      var s_to_req = (self.pending.request.created_at - stamp) / 1000;
-      var s_to_now = (new Date()                      - stamp) / 1000;
+      var s_to_now = (new Date() - stamp) / 1000;
+      var s_to_req = self.pending.request ?
+                       (self.pending.request.created_at - stamp) / 1000 :
+                       '[no req]';
 
       if(ev === 'end')
         return self.log.debug('Old END: to_req=' + s_to_req + 's, to_now=' + s_to_now + 's');
@@ -339,8 +350,8 @@ Feed.prototype.on_change = function on_change(change) {
   if(!change.seq)
     return self.die(new Error('No seq value in change: ' + lib.JS(change)));
 
-  if(change.seq <= self.seen)
-    return self.die(new Error('Bad seq value ' + change.seq + ' but seen=' + self.seen + ' : ' + lib.JS(change)));
+  if(change.seq <= self.since)
+    return self.die(new Error('Bad seq value ' + change.seq + ' but since=' + self.since + ' : ' + lib.JS(change)));
 
   if(typeof self.filter !== 'function')
     return self.on_good_change(change);
@@ -358,6 +369,7 @@ Feed.prototype.on_change = function on_change(change) {
 Feed.prototype.on_good_change = function on_good_change(change) {
   var self = this;
 
+  self.since = change.seq;
   self.emit('change', change);
 }
 
@@ -370,9 +382,14 @@ module.exports = { "Feed" : Feed
  */
 
 function destroy_req(req) {
-  if(!req)
+  if(req)
+    return destroy_response(req.response);
+}
+
+function destroy_response(response) {
+  if(!response)
     return;
 
-  req.response.connection.end();
-  req.response.connection.destroy();
+  response.connection.end();
+  response.connection.destroy();
 }
