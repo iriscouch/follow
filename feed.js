@@ -84,9 +84,10 @@ Feed.prototype.confirm = function confirm_feed() {
   self.log.debug('Checking database: ' + self.db_safe);
   self.emit('confirm');
 
+  var confirm_timeout = self.heartbeat * 3; // Give it time to look up the name, connect, etc.
   var timeout_id = setTimeout(function() {
     return self.die(new Error('Timeout confirming database: ' + self.db_safe));
-  }, self.heartbeat);
+  }, confirm_timeout);
 
   request.get(self.db, function(er, resp, body) {
     clearTimeout(timeout_id);
