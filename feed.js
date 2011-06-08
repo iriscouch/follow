@@ -18,11 +18,9 @@ var FEED_PARAMETERS   = ['since', 'limit', 'feed', 'heartbeat', 'filter', 'inclu
 var SUPER_CLASS = require('events').EventEmitter;
 //var SUPER_CLASS = require('stream').Stream;
 
-function Feed (db) {
+function Feed (opts) {
   var self = this;
   SUPER_CLASS.call(self);
-
-  self.db = db;
 
   self.feed = 'continuous';
   self.heartbeat         = DEFAULT_HEARTBEAT;
@@ -33,8 +31,13 @@ function Feed (db) {
   self.request = {}; // Extra options for potentially future versions of request. The caller can supply them.
 
   self.since = 0;
-
   self.retry_delay = INITIAL_RETRY_DELAY; // ms
+
+  if(typeof opts === 'string')
+    opts = {'db': opts};
+  Object.keys(opts).forEach(function(key) {
+    self[key] = opts[key];
+  })
 
   self.pending = { request     : null
                  , activity_at : null
