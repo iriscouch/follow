@@ -136,6 +136,11 @@ Feed.prototype.query = function query_feed() {
   if(typeof query_params.filter !== 'string')
     delete query_params.filter;
 
+  if(typeof self.filter === 'function') {
+    self.log.debug('Enabling include_docs for client-side filter');
+    query_params.include_docs = true;
+  }
+
   var feed_url = self.db + '/_changes?' + querystring.stringify(query_params);
 
   self.headers.accept = self.headers.accept || 'application/json';
@@ -392,9 +397,20 @@ Feed.prototype.on_change = function on_change(change) {
   if(typeof self.filter !== 'function')
     return self.on_good_change(change);
 
-  var req = { 'query': lib.JDUP(self.pending.request.changes_query) };
-  var f_change = lib.JDUP(change); // Don't let the filter mutate the real data.
-  var result = self.filter.apply(null, [f_change, req]);
+  if(!change.doc)
+    return self.die(new Error('Internal filter deeds .doc in change ' + change.seq));
+
+  // Don't let the filter mutate the real data.
+  var doc = lib.JDUP(change.doc);
+  var req = lib.JDUP({'query': self.pending.request.changes_query});
+
+  var result = false;
+  try {
+    result = self.filter.apply(null, [doc, req]);
+  } catch (er) {
+    self.log.debug('Filter error', er);
+  }
+
   result = (result && true) || false;
   if(result) {
     self.log.debug('Builtin filter PASS for change: ' + change.seq);
