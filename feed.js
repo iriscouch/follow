@@ -244,6 +244,12 @@ Feed.prototype.prep = function prep_request(req) {
     req.on(ev, handler_for(ev));
   })
 
+  // The inactivity timer is for time between *changes*, or time between the
+  // initial connection and the first change. Therefore it goes here.
+  self.change_at = now;
+  if(self.inactivity_ms)
+    self.inactivity_timer = setTimeout(function() { self.on_inactivity() }, self.inactivity_ms);
+
   return self.wait();
 }
 
@@ -255,8 +261,12 @@ Feed.prototype.wait = function wait_for_event() {
     return self.die(new Error('wait() called but there is already a wait_timer: ' + self.pending.wait_timer));
 
   var timeout_ms = self.heartbeat * HEARTBEAT_TIMEOUT_COEFFICIENT;
+  var msg = 'Req ' + self.pending.request.id() + ' timeout=' + timeout_ms;
+  if(self.inactivity_ms)
+    msg += ', inactivity=' + self.inactivity_ms;
+  msg += ': ' + self.db_safe;
 
-  self.log.debug('Req ' + self.pending.request.id() + ' waiting ' + timeout_ms + 'ms for data: ' + self.db_safe);
+  self.log.debug(msg);
   self.pending.wait_timer = setTimeout(function() { self.on_timeout() }, timeout_ms);
 }
 
@@ -390,8 +400,26 @@ Feed.prototype.on_change = function on_change(change) {
 Feed.prototype.on_good_change = function on_good_change(change) {
   var self = this;
 
+  if(self.inactivity_ms && !self.inactivity_timer)
+    return self.die(new Error('Cannot find inactivity timer during change'));
+
+  clearTimeout(self.inactivity_timer);
+  self.inactivity_timer = null;
+  if(self.inactivity_ms)
+    self.inactivity_timer = setTimeout(function() { self.on_inactivity() }, self.inactivity_ms);
+
+  self.change_at = new Date;
   self.since = change.seq;
   self.emit('change', change);
+}
+
+Feed.prototype.on_inactivity = function on_inactivity() {
+  var self = this;
+  var now = new Date;
+  var elapsed_ms = now - self.change_at;
+  var elapsed_s  = elapsed_ms / 1000;
+
+  return self.die(new Error('Req ' + self.pending.request.id() + ' made no changes for ' + elapsed_s + 's'));
 }
 
 module.exports = { "Feed" : Feed
