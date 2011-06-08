@@ -40,8 +40,7 @@ feed.on('change', function(change) {
 
 feed.on('error', function(er) {
   //console.error(er);
-  console.error('Changes error ============');
-  console.error(er.stack);
+  console.error('Changes error ============\n' + er.stack);
   setTimeout(function() { process.exit(0) }, 100);
 })
 

@@ -224,7 +224,7 @@ Feed.prototype.prep = function prep_request(req) {
       if(self.pending.request)
         s_to_req = (self.pending.request.created_at - req.created_at) / 1000;
 
-      var msg = req.id() + ': to_req=' + s_to_req + 's, to_now=' + s_to_now + 's';
+      var msg = ': ' + req.id() + ' to_req=' + s_to_req + 's, to_now=' + s_to_now + 's';
 
       if(ev === 'end') {
         return self.log.debug('Old END' + msg);
