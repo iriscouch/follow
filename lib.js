@@ -12,8 +12,8 @@ var VERBOSE = (process.env.verbose === 'true');
 var noop = function() {};
 var noops = { "trace": noop
             , "debug": VERBOSE ? console.log   : noop
-            , "info" : VERBOSE ? console.log   : noop
-            , "warn" : VERBOSE ? console.log   : noop
+            , "info" : VERBOSE ? console.info  : noop
+            , "warn" : VERBOSE ? console.warn  : noop
             , "error": VERBOSE ? console.error : noop
             , "fatal": VERBOSE ? console.error : noop
 
