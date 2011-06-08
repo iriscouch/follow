@@ -28,7 +28,7 @@ feed.filter = function(doc, req) {
 }
 
 feed.on('change', function(change) {
-  console.log('Change:', change);
+  console.log('Change:' + JSON.stringify(change));
 })
 
 feed.on('error', function(er) {
