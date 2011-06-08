@@ -333,7 +333,8 @@ Feed.prototype.on_couch_end = function on_couch_end() {
 Feed.prototype.on_couch_error = function on_couch_error(er) {
   var self = this;
 
-  return self.die(er);
+  self.log.debug('Changes query eror: ' + lib.JS(er.stack));
+  return self.retry();
 }
 
 Feed.prototype.die = function(er) {
