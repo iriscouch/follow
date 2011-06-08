@@ -27,6 +27,7 @@ function Feed (db) {
   self.feed = 'continuous';
   self.heartbeat         = DEFAULT_HEARTBEAT;
   self.max_retry_seconds = DEFAULT_MAX_RETRY_SECONDS;
+  self.inactivity_ms = null;
 
   self.headers = {};
   self.request = {}; // Extra options for potentially future versions of request. The caller can supply them.
@@ -223,16 +224,16 @@ Feed.prototype.prep = function prep_request(req) {
       var msg = req.id() + ': to_req=' + s_to_req + 's, to_now=' + s_to_now + 's';
 
       if(ev === 'end') {
-        return self.log.debug('Old END ' + msg);
+        return self.log.debug('Old END' + msg);
         return destroy_req(req);
       }
 
       if(ev === 'data') {
-        self.log.debug('Old DATA ' + msg);
+        self.log.debug('Old DATA' + msg);
         return destroy_req(req);
       }
 
-      self.log.warn('Received "' + ev + '" from old request started ' + s_to_req + 's before current and ' + s_to_now + 's before now');
+      self.log.warn('Old "'+ev+'"' + msg);
     }
 
     return handle_confirmed_req_event;
