@@ -9,7 +9,7 @@ var lib = require('./lib')
   ;
 
 var DEFAULT_HEARTBEAT = 30000;
-var HEARTBEAT_TIMEOUT_COEFFICIENT = 1.2; // E.g. heartbeat 1000ms would trigger a timeout after 1200ms of no heartbeat.
+var HEARTBEAT_TIMEOUT_COEFFICIENT = 1.25; // E.g. heartbeat 1000ms would trigger a timeout after 1250ms of no heartbeat.
 var DEFAULT_MAX_RETRY_SECONDS     = 60 * 60;
 var INITIAL_RETRY_DELAY           = 1000;
 
