@@ -361,8 +361,10 @@ Feed.prototype.on_change = function on_change(change) {
   if(!change.seq)
     return self.die(new Error('No seq value in change: ' + lib.JS(change)));
 
-  if(change.seq <= self.since)
-    return self.die(new Error('Bad seq value ' + change.seq + ' but since=' + self.since + ' : ' + lib.JS(change)));
+  if(change.seq <= self.since) {
+    self.log.debug('Bad seq value ' + change.seq + ' since=' + self.since);
+    return destroy_req(self.pending.request);
+  }
 
   if(typeof self.filter !== 'function')
     return self.on_good_change(change);
