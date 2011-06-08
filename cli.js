@@ -32,8 +32,9 @@ feed.on('change', function(change) {
 })
 
 feed.on('error', function(er) {
-  //console.log("ERROR:", er);
-  throw er;
+  //console.error(er);
+  console.error(er.stack);
+  process.exit(1);
 })
 
 feed.follow();
