@@ -41,7 +41,8 @@ function Feed (db) {
                  , data        : null
                  };
 
-  // XXX
+  /*
+  // Debugging help
   var events = ['drain', 'error', 'close', 'pipe', 'data', 'end', 'fd'];
 
   events.forEach(function(ev) {
@@ -51,6 +52,8 @@ function Feed (db) {
       self.log.debug('EVENT ' + ev + ' ' + lib.JS(args));
     })
   })
+  */
+
 } // Feed
 util.inherits(Feed, SUPER_CLASS);
 
