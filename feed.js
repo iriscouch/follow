@@ -137,8 +137,7 @@ Feed.prototype.query = function query_feed() {
   })
 
   var now = new Date;
-  self.log.debug('Querying ' + self.db_safe + ' at ' + lib.JP(lib.JS(now)));
-  //self.log.debug(lib.JS(req));
+  self.log.debug('Query at ' + lib.JP(lib.JS(now)) + ': ' + lib.scrub_creds(feed_url));
 
   var timeout_id, timed_out = false;
   var in_flight, timeout_id, timed_out = false;
