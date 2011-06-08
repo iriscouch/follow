@@ -161,7 +161,7 @@ Feed.prototype.query = function query_feed() {
     }
 
     if(er) {
-      self.log.debug('Request error ' + in_flight.id(), er);
+      self.log.debug('Request error ' + in_flight.id() + ': ' + er.stack);
       destroy_response(resp);
       return self.retry();
     }
