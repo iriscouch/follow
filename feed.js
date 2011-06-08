@@ -339,7 +339,7 @@ Feed.prototype.on_couch_error = function on_couch_error(er) {
 Feed.prototype.die = function(er) {
   var self = this;
 
-  self.log.fatal('Fatal error: ' + er.toString());
+  self.log.fatal('Fatal error: ' + er.stack);
   
   self.emit('error', er);
 
