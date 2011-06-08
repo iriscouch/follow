@@ -33,6 +33,7 @@ function Feed (opts) {
   self.since = 0;
   self.retry_delay = INITIAL_RETRY_DELAY; // ms
 
+  opts = opts || {};
   if(typeof opts === 'string')
     opts = {'db': opts};
   Object.keys(opts).forEach(function(key) {
@@ -61,11 +62,8 @@ function Feed (opts) {
 util.inherits(Feed, SUPER_CLASS);
 
 Feed.prototype.start =
-Feed.prototype.follow = function follow_feed(db) {
+Feed.prototype.follow = function follow_feed() {
   var self = this;
-
-  if(db)
-    self.db = db;
 
   if(!self.db)
     throw new Error('Database URL required');
