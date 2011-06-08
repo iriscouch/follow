@@ -29,8 +29,8 @@ If CouchDB permanently crashes, there is an option of failure modes:
 
 This looks much like the `request` package.
 
-    var follow_couchdb = require('follow_couchdb');
-    follow_couchdb("https://example.iriscouch.com/boogie", function(error, change) {
+    var follow = require('follow');
+    follow("https://example.iriscouch.com/boogie", function(error, change) {
       if(!error) {
         console.log("Got change number " + change.seq + ": " + change.id);
       }
@@ -40,13 +40,13 @@ The `error` parameter to the callback will basically always be `null`.
 
 The first argument can be an object, useful to include the documents in the feed.
 
-    follow_couchdb({db:"https://example.iriscouch.com/boogie", include_docs:true}, function(error, change) {
+    follow({db:"https://example.iriscouch.com/boogie", include_docs:true}, function(error, change) {
       if(!error) {
         console.log("Change " + change.seq + " has " + Object.keys(change.doc).length + " fields");
       }
     })
 
-### follow_couchdb(options, callback)
+### follow(options, callback)
 
 The first argument is an options object. The only required option is `db`. Instead of an object, you can use a string to indicate the ``db` value.
 
@@ -69,10 +69,10 @@ Besides the CouchDB options, more are available:
 
 The main API is a thin wrapper around the EventEmitter API.
 
-    var follow_couchdb = require('follow_couchdb');
+    var follow = require('follow');
 
     var opts = {}; // Same options paramters as before
-    var feed = new follow_couchdb.Feed(opts);
+    var feed = new follow.Feed(opts);
 
     // You can also set values directly.
     feed.db            = "http://example.iriscouch.com/boogie";
