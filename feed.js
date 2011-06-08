@@ -264,7 +264,7 @@ Feed.prototype.on_couch_data = function on_couch_data(data, req) {
     buf = buf.substr(offset + 1);
 
     if(json == '') {
-      // This is a heartbeat.
+      self.log.debug('Heartbeat');
     } else {
       //self.log.debug('JSON: ' + json);
       try {
@@ -359,6 +359,7 @@ Feed.prototype.on_change = function on_change(change) {
   var req = { 'query': lib.JDUP(self.pending.request.changes_query) };
   var f_change = lib.JDUP(change); // Don't let the filter mutate the real data.
   var result = self.filter.apply(null, [f_change, req]);
+  result = (result && true) || false;
   if(result) {
     self.log.debug('Builtin filter PASS for change: ' + change.seq);
     return self.on_good_change(change);
