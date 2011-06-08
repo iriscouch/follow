@@ -367,9 +367,11 @@ Feed.prototype.die = function(er) {
   
   self.emit('error', er);
 
-  if(self.pending && self.pending.request) {
-    self.log.debug('Destroying req ' + self.pending.request.id());
-    destroy_request(self.pending.request);
+  var req = self.pending.request;
+  self.pending.request = null;
+  if(req) {
+    self.log.debug('Destroying req ' + req.id());
+    destroy_req(req);
   }
 
   //throw er;
