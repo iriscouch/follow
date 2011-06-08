@@ -93,7 +93,7 @@ Feed.prototype.confirm = function confirm_feed() {
     clearTimeout(timeout_id);
 
     if(er)
-      return self.emit('error', er);
+      return self.die(er);
 
     var db;
     try {
