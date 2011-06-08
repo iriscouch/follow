@@ -26,6 +26,9 @@ feed.heartbeat = parseInt(process.env.heartbeat || '3000');
 if(process.env.host)
   feed.headers.host = process.env.host;
 
+if(process.env.inactivity)
+  feed.inactivity_ms = parseInt(process.env.inactivity);
+
 feed.filter = function(doc, req) {
   // This is a local filter. It runs on the client side.
   return true;
