@@ -109,6 +109,12 @@ Feed.prototype.confirm = function confirm_feed() {
       return self.emit('error', new Error('Bad DB response: ' + body));
 
     self.log.debug('Confirmed db: ' + self.db_safe);
+
+    if(self.since === 'now') {
+      self.since = db.update_seq;
+      self.log.debug('Query since "now" will start at ' + self.since);
+    }
+
     return self.query();
   })
 }

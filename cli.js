@@ -20,7 +20,7 @@ console.log('Watching:', db);
 
 var feed = new couch_changes.Feed();
 feed.db = db;
-feed.since = 0;
+feed.since = (process.env.since === 'now') ? 'now' : parseInt(process.env.since || '0');
 feed.heartbeat = parseInt(process.env.heartbeat || '3000');
 feed.filter = function(doc, req) {
   // This is a local filter. It runs on the client side.
