@@ -34,7 +34,13 @@ feed.on('change', function(change) {
 feed.on('error', function(er) {
   //console.error(er);
   console.error(er.stack);
-  process.exit(1);
+  process.exit(0);
+})
+
+process.on('uncaughtException', function(er) {
+  console.log('========= UNCAUGHT EXCEPTION; This is bad');
+  console.log(er.stack);
+  setTimeout(function() { process.exit(1) }, 100);
 })
 
 feed.follow();
