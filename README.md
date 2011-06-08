@@ -48,7 +48,7 @@ The first argument can be an object, useful to include the documents in the feed
 
 ### follow(options, callback)
 
-The first argument is an options object. The only required option is `db`. Instead of an object, you can use a string to indicate the ``db` value.
+The first argument is an options object. The only required option is `db`. Instead of an object, you can use a string to indicate the `db` value.
 
 All of the CouchDB _changes options are allowed. See http://guide.couchdb.org/draft/notifications.html.
 
