@@ -11,6 +11,7 @@ var lib = require('./lib')
 var DEFAULT_HEARTBEAT = 30000;
 var HEARTBEAT_TIMEOUT_COEFFICIENT = 1.2; // E.g. heartbeat 1000ms would trigger a timeout after 1200ms of no heartbeat.
 var DEFAULT_MAX_RETRY_SECONDS     = 60 * 60;
+var INITIAL_RETRY_DELAY           = 1000;
 
 var FEED_PARAMETERS   = ['since', 'limit', 'feed', 'heartbeat', 'filter', 'include_docs'];
 
@@ -32,7 +33,7 @@ function Feed (db) {
 
   self.since = 0;
 
-  self.retry_delay = 1000; // ms
+  self.retry_delay = INITIAL_RETRY_DELAY; // ms
 
   self.pending = { request     : null
                  , activity_at : null
@@ -134,50 +135,54 @@ Feed.prototype.query = function query_feed() {
     req[key] = self.request[key];
   })
 
-  self.log.debug('Querying: ' + self.db_safe);
+  var now = new Date;
+  self.log.debug('Querying ' + self.db_safe + ' at ' + lib.JP(lib.JS(now)));
   //self.log.debug(lib.JS(req));
 
-  var in_flight, timeout_id;
-  function response_on_time(er, resp) {
+  var timeout_id, timed_out = false;
+  var in_flight, timeout_id, timed_out = false;
+
+  var timed_out = false;
+  function on_timeout() {
+    self.log.debug('Request timeout: ' + in_flight.id());
+    timed_out = true;
+    return self.retry();
+  }
+
+  function on_response(er, resp) {
     clearTimeout(timeout_id);
 
-    // Confirm that there is not a newer pending request and this one is unwanted.
-    /*
-    if(self.pending.request !== in_flight) {
-      self.log.debug('Ignoring response from old request');
+    if(timed_out) {
+      self.log.debug('Ignoring late response: ' + in_flight.id());
       return destroy_response(resp);
     }
-    */
 
     if(er) {
-      self.log.debug('Request error', er);
+      self.log.debug('Request error ' + in_flight.id(), er);
+      destroy_response(resp);
       return self.retry();
     }
 
     if(resp.statusCode !== 200) {
-      self.log.debug('Bad couch changes response: ' + resp.statusCode);
+      self.log.debug('Bad changes response' + in_flight.id() + ': ' + resp.statusCode);
+      destroy_response(resp);
       return self.retry();
     }
 
-    self.log.debug('Good changes response');
-    self.retry_delay = 1000;
+    self.log.debug('Good response: ' + in_flight.id());
+    self.retry_delay = INITIAL_RETRY_DELAY;
     return self.prep(in_flight);
   }
 
-  function response_too_late(er, resp) {
-    self.log.debug('Ignoring changes response arriving too late');
-    destroy_response(resp);
-  }
-
-  req.onResponse = response_on_time;
-  function on_timeout() {
-    self.log.debug('Request timeout');
-    req.onResponse = response_too_late;
-    return self.retry();
-  }
-
+  req.onResponse = on_response;
   timeout_id = setTimeout(on_timeout, self.heartbeat);
   in_flight = request(req);
+  in_flight.created_at = now;
+  in_flight.id = function() { return lib.JP(lib.JS(this.created_at)) };
+
+  // Shorten the timestamp, used for debugging.
+  //in_flight.id = function() { return /\.(\d\d\d)Z$/.exec(lib.JP(lib.JS(this.created_at)))[1] };
+
   return self.emit('query');
 }
 
@@ -186,7 +191,6 @@ Feed.prototype.prep = function prep_request(req) {
 
   var now = new Date;
   self.pending.request = req;
-  self.pending.request.created_at = now;
   self.pending.activity_at = now;
   self.pending.data        = "";
   self.pending.wait_timer  = null;
@@ -199,20 +203,23 @@ Feed.prototype.prep = function prep_request(req) {
       if(self.pending.request === req)
         return inner_handler.apply(self, arguments);
 
-      var stamp = req.created_at;
-      if(!stamp)
+      if(!req.created_at)
         return self.die(new Error("Received data from unknown request")); // Pretty sure this is impossible.
 
-      var s_to_now = (new Date() - stamp) / 1000;
-      var s_to_req = self.pending.request ?
-                       (self.pending.request.created_at - stamp) / 1000 :
-                       '[no req]';
+      var s_to_now = (new Date() - req.created_at) / 1000;
+      var s_to_req = '[no req]';
+      if(self.pending.request)
+        s_to_req = (self.pending.request.created_at - req.created_at) / 1000;
 
-      if(ev === 'end')
-        return self.log.debug('Old END: to_req=' + s_to_req + 's, to_now=' + s_to_now + 's');
+      var msg = req.id() + ': to_req=' + s_to_req + 's, to_now=' + s_to_now + 's';
+
+      if(ev === 'end') {
+        return self.log.debug('Old END ' + msg);
+        return destroy_req(req);
+      }
 
       if(ev === 'data') {
-        self.log.debug('Old DATA: to_req=' + s_to_req + 's, to_now=' + s_to_now + 's');
+        self.log.debug('Old DATA ' + msg);
         return destroy_req(req);
       }
 
@@ -239,7 +246,7 @@ Feed.prototype.wait = function wait_for_event() {
 
   var timeout_ms = self.heartbeat * HEARTBEAT_TIMEOUT_COEFFICIENT;
 
-  self.log.debug('Waiting ' + timeout_ms + 'ms for data: ' + self.db_safe);
+  self.log.debug('Req ' + self.pending.request.id() + ' waiting ' + timeout_ms + 'ms for data: ' + self.db_safe);
   self.pending.wait_timer = setTimeout(function() { self.on_timeout() }, timeout_ms);
 }
 
@@ -253,7 +260,7 @@ Feed.prototype.on_couch_data = function on_couch_data(data, req) {
   self.pending.wait_timer = null;
   self.pending.activity_at = new Date;
 
-  //self.log.debug('data: ' + util.inspect(data));
+  self.log.debug('Data from ' + self.pending.request.id());
 
   // Buf could have 0, 1, or many JSON objects in it.
   var buf = self.pending.data + data;
@@ -264,7 +271,7 @@ Feed.prototype.on_couch_data = function on_couch_data(data, req) {
     buf = buf.substr(offset + 1);
 
     if(json == '') {
-      self.log.debug('Heartbeat');
+      self.log.debug('Heartbeat: ' + self.pending.request.id());
     } else {
       //self.log.debug('JSON: ' + json);
       try {
@@ -292,9 +299,10 @@ Feed.prototype.on_timeout = function on_timeout() {
 
   var now = new Date;
   var elapsed_ms = now - self.pending.activity_at;
-  self.log.warn('Timeout after ' + elapsed_ms + 'ms; heartbeat=' + self.heartbeat);
+  self.log.warn('Closing req ' + self.pending.request.id() + ' for timeout after ' + elapsed_ms + 'ms; heartbeat=' + self.heartbeat);
 
-  return self.retry();
+  return destroy_req(self.pending.request);
+  //return self.retry();
 }
 
 Feed.prototype.retry = function retry() {
@@ -305,10 +313,6 @@ Feed.prototype.retry = function retry() {
 
   self.log.info('Retrying since=' + self.since + ' after ' + self.retry_delay + 'ms: ' + self.db_safe);
   self.emit('retry');
-
-  var req = self.pending.request;
-  self.pending.request = null;
-  destroy_req(req);
 
   setTimeout(function() { self.query() }, self.retry_delay);
 
@@ -321,7 +325,8 @@ Feed.prototype.retry = function retry() {
 Feed.prototype.on_couch_end = function on_couch_end() {
   var self = this;
 
-  self.log.warn('Couch feed ended');
+  self.log.debug('Changes feed ended ' + self.pending.request.id());
+  self.pending.request = null;
   return self.retry();
 }
 
@@ -338,8 +343,10 @@ Feed.prototype.die = function(er) {
   
   self.emit('error', er);
 
-  if(self.pending && self.pending.request)
+  if(self.pending && self.pending.request) {
+    self.log.debug('Destroying req ' + self.pending.request.id());
     destroy_request(self.pending.request);
+  }
 
   //throw er;
 }
