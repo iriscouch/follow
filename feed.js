@@ -89,7 +89,10 @@ Feed.prototype.confirm = function confirm_feed() {
     return self.die(new Error('Timeout confirming database: ' + self.db_safe));
   }, confirm_timeout);
 
-  request.get(self.db, function(er, resp, body) {
+  var headers = lib.JP(lib.JS(self.headers));
+  headers.accept = 'application/json';
+
+  request({uri:self.db, headers:headers}, function(er, resp, body) {
     clearTimeout(timeout_id);
 
     if(er)
@@ -124,7 +127,7 @@ Feed.prototype.query = function query_feed() {
 
   var feed_url = self.db + '/_changes?' + querystring.stringify(query_params);
 
-  self.headers.Accept = self.headers.Accept || 'application/json';
+  self.headers.accept = self.headers.accept || 'application/json';
   var req = { method : 'GET'
             , uri    : feed_url
             , headers: self.headers
