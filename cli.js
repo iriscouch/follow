@@ -29,10 +29,13 @@ if(process.env.host)
 if(process.env.inactivity)
   feed.inactivity_ms = parseInt(process.env.inactivity);
 
-feed.filter = function(doc, req) {
+function simple_filter(doc, req) {
   // This is a local filter. It runs on the client side.
   return true;
 }
+
+if(! process.env.nofilter)
+  feed.filter = simple_filter;
 
 feed.on('change', function(change) {
   console.log('Change:' + JSON.stringify(change));
