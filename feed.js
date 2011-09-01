@@ -15,7 +15,6 @@
 //    limitations under the License.
 
 var lib = require('./lib')
-  , url = require('url')
   , util = require('util')
   , events = require('events')
   , request = require('request')
@@ -29,9 +28,11 @@ var INITIAL_RETRY_DELAY           = 1000;
 
 var FEED_PARAMETERS   = ['since', 'limit', 'feed', 'heartbeat', 'filter', 'include_docs'];
 
+var EventEmitter = events.EventEmitter2 || events.EventEmitter;
+
 function Feed (opts) {
   var self = this;
-  events.EventEmitter.call(self);
+  EventEmitter.call(self);
 
   self.feed = 'continuous';
   self.heartbeat         = DEFAULT_HEARTBEAT;
@@ -70,7 +71,7 @@ function Feed (opts) {
   */
 
 } // Feed
-util.inherits(Feed, events.EventEmitter);
+util.inherits(Feed, EventEmitter);
 
 Feed.prototype.start =
 Feed.prototype.follow = function follow_feed() {
@@ -85,8 +86,7 @@ Feed.prototype.follow = function follow_feed() {
   if(typeof self.heartbeat !== 'number')
     throw new Error('Required "heartbeat" value');
 
-  var parsed = url.parse(self.db);
-  self.log = lib.log4js().getLogger(parsed.hostname + parsed.pathname);
+  self.log = lib.log4js().getLogger(self.db);
   self.log.setLevel(process.env.changes_level || "info");
 
   self.emit('start');
