@@ -149,8 +149,8 @@ Feed.prototype.query = function query_feed() {
   if(typeof query_params.filter !== 'string')
     delete query_params.filter;
 
-  if(typeof self.filter === 'function') {
-    self.log.debug('Enabling include_docs for client-side filter');
+  if(typeof self.filter === 'function' && !query_params.include_docs) {
+    self.log.info('Enabling include_docs for client-side filter');
     query_params.include_docs = true;
   }
 
