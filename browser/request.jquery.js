@@ -15,6 +15,8 @@ define(['jquery'], function(jQuery) {
 var DEFAULT_TIMEOUT = 3 * 60 * 1000; // 3 minutes
 
 function request(options, callback) {
+  var options_onResponse = options.onResponse; // Save this for later.
+
   if(typeof options === 'string')
     options = {'uri':options};
   else
@@ -46,6 +48,9 @@ function request(options, callback) {
 
   if(options.headers.host)
     throw new Error("Options.headers.host is not supported");
+
+  // onResponse is just like the callback but that is not quite what Node request does.
+  callback = callback || options_onResponse;
 
   /*
   // Browsers do not like this.
