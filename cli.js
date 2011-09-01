@@ -59,7 +59,10 @@ function main() {
   })
 
   feed.on('retry', function(state) {
-    puts('Retry since ' + state.since + ' after ' + state.after + 'ms');
+    if(require.isBrowser)
+      puts('Long polling since ' + state.since);
+    else
+      puts('Retry since ' + state.since + ' after ' + state.after + 'ms');
   })
 
   feed.on('response', function() {
