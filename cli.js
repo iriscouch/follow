@@ -58,6 +58,12 @@ feed.on('change', function(change) {
   console.log('Change:' + JSON.stringify(change));
 })
 
+feed.on('timeout', function(state) {
+  var seconds = state.elapsed_ms / 1000;
+  var hb = state.heartbeat / 1000;
+  console.log('Timeout after ' + seconds + 's inactive, heartbeat=' + hb + 's');
+})
+
 feed.on('retry', function(state) {
   console.log('Retry since ' + state.since + ' after ' + state.after + 'ms');
 })
