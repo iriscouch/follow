@@ -19,15 +19,13 @@ var lib = require('./lib')
   , couch_changes = require('./api')
   ;
 
-function usage() {
-  console.log([ 'usage: follow <URL>'
-              , ''
-              ].join("\n"));
+function puts(str) {
+  process.stdout.write(str + "\n");
 }
 
 function main() {
   var db = require.isBrowser ? (process.env.db || '/_users') : process.argv[2];
-  console.log('Watching:', db);
+  puts('Watching:', db);
 
   var feed = new couch_changes.Feed();
   feed.db = db;
@@ -52,25 +50,25 @@ function main() {
     feed.filter = simple_filter;
 
   feed.on('confirm', function() {
-    console.log('Database confirmed: ' + db);
+    puts('Database confirmed: ' + db);
   })
 
   feed.on('change', function(change) {
-    console.log('Change:' + JSON.stringify(change));
+    puts('Change:' + JSON.stringify(change));
   })
 
   feed.on('timeout', function(state) {
     var seconds = state.elapsed_ms / 1000;
     var hb = state.heartbeat / 1000;
-    console.log('Timeout after ' + seconds + 's inactive, heartbeat=' + hb + 's');
+    puts('Timeout after ' + seconds + 's inactive, heartbeat=' + hb + 's');
   })
 
   feed.on('retry', function(state) {
-    console.log('Retry since ' + state.since + ' after ' + state.after + 'ms');
+    puts('Retry since ' + state.since + ' after ' + state.after + 'ms');
   })
 
   feed.on('response', function() {
-    console.log('Streaming response:');
+    puts('Streaming response:');
   })
 
   feed.on('error', function(er) {
@@ -80,8 +78,8 @@ function main() {
   })
 
   process.on('uncaughtException', function(er) {
-    console.log('========= UNCAUGHT EXCEPTION; This is bad');
-    console.log(er.stack);
+    puts('========= UNCAUGHT EXCEPTION; This is bad');
+    puts(er.stack);
     setTimeout(function() { process.exit(1) }, 100);
   })
 
