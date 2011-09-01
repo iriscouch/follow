@@ -25,7 +25,7 @@ function puts(str) {
 
 function main() {
   var db = require.isBrowser ? (process.env.db || '/_users') : process.argv[2];
-  puts('Watching:', db);
+  puts('Watching: ' + db);
 
   var feed = new couch_changes.Feed();
   feed.db = db;
