@@ -345,15 +345,17 @@ Feed.prototype.on_timeout = function on_timeout() {
   var now = new Date;
   var elapsed_ms = now - self.pending.activity_at;
 
-  var msg = ' for timeout after ' + elapsed_ms + 'ms; heartbeat=' + self.heartbeat;
+  self.emit('timeout', {elapsed_ms:elapsed_ms, heartbeat:self.heartbeat, id:self.pending.request.id});
 
+  /*
+  var msg = ' for timeout after ' + elapsed_ms + 'ms; heartbeat=' + self.heartbeat;
   if(!self.pending.request.id)
     self.log.warn('Closing req (no id) ' + msg + ' req=' + util.inspect(self.pending.request));
   else
     self.log.warn('Closing req ' + self.pending.request.id() + msg);
+  */
 
   return destroy_req(self.pending.request);
-  //return self.retry();
 }
 
 Feed.prototype.retry = function retry() {
