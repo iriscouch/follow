@@ -236,8 +236,10 @@ Feed.prototype.prep = function prep_request(req, body) {
   // The inactivity timer is for time between *changes*, or time between the
   // initial connection and the first change. Therefore it goes here.
   self.change_at = now;
-  if(self.inactivity_ms)
+  if(self.inactivity_ms) {
+    clearTimeout(self.inactivity_timer);
     self.inactivity_timer = setTimeout(function() { self.on_inactivity() }, self.inactivity_ms);
+  }
 
   var a, change;
   if(body) {
