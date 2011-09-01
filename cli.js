@@ -27,16 +27,15 @@ function usage() {
 
 function main() {
   var db = require.isBrowser ? (process.env.db || '/_users') : process.argv[2];
-
-  if(! /^https?:\/\//.test(db))
-    db = 'http://' + db;
-
   console.log('Watching:', db);
 
   var feed = new couch_changes.Feed();
   feed.db = db;
   feed.since = (process.env.since === 'now') ? 'now' : parseInt(process.env.since || '0');
   feed.heartbeat = parseInt(process.env.heartbeat || '3000');
+
+  if(require.isBrowser)
+    feed.feed = 'longpoll';
 
   if(process.env.host)
     feed.headers.host = process.env.host;
