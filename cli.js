@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The changes_couchdb command-line interface.
+// The follow command-line interface.
 //
 // Copyright 2011 Iris Couch
 //
@@ -20,7 +20,7 @@ var lib = require('./lib')
   ;
 
 function usage() {
-  console.log([ 'usage: changes_couchdb <URL>'
+  console.log([ 'usage: follow <URL>'
               , ''
               ].join("\n"));
 }
@@ -47,11 +47,23 @@ function simple_filter(doc, req) {
   return true;
 }
 
-if(! process.env.nofilter)
+if(process.env.filter)
   feed.filter = simple_filter;
+
+feed.on('confirm', function() {
+  console.log('Database confirmed: ' + db);
+})
 
 feed.on('change', function(change) {
   console.log('Change:' + JSON.stringify(change));
+})
+
+feed.on('retry', function(state) {
+  console.log('Retry since ' + state.since + ' after ' + state.after + 'ms');
+})
+
+feed.on('response', function() {
+  console.log('Streaming response:');
 })
 
 feed.on('error', function(er) {
