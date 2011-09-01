@@ -41,13 +41,8 @@ function main() {
   if(process.env.inactivity)
     feed.inactivity_ms = parseInt(process.env.inactivity);
 
-  function simple_filter(doc, req) {
-    // This is a local filter. It runs on the client side.
-    return true;
-  }
-
   if(process.env.filter)
-    feed.filter = simple_filter;
+    feed.filter = process.env.filter;
 
   feed.on('confirm', function() {
     puts('Database confirmed: ' + db);
