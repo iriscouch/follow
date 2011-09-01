@@ -19,8 +19,12 @@ task :export => ([:clean, "cli.js"] + LIBRARY + BROWSER_TOOLS) do |task|
     sh "cp", file, build
   end
 
+  # EventEmitter2 needs wrapping.
+  sh "node", "browser/export.js", "browser/eventemitter2.js", "#{build}/eventemitter2.js"
+
   File.open("#{build}/boot.js", 'w') do |boot|
-    requirejs_paths = { 'request' => '../request.jquery',
+    requirejs_paths = { 'request' => 'request.jquery',
+                        'events' => 'eventemitter2',
                         # 'foo' => 'bar', etc.
                       }
 
