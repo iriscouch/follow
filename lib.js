@@ -21,7 +21,11 @@ exports.JS = JSON.stringify;
 exports.JDUP = function(obj) { return JSON.parse(JSON.stringify(obj)) };
 
 // Wrap log4js so it will not be a dependency.
-var VERBOSE = (process.env.verbose === 'true');
+var VERBOSE;
+if(require.isBrowser)
+  VERBOSE = true;
+else
+  verbose = (process.env.verbose === 'true');
 
 var noop = function() {};
 var noops = { "trace": noop
@@ -37,8 +41,11 @@ var noops = { "trace": noop
 try {
   exports.log4js = require('log4js');
 } catch(e) {
+  exports.log4js = null;
+}
+
+if(typeof exports.log4js !== 'function')
   exports.log4js = function() {
     return { 'getLogger': function() { return noops }
            }
   }
-}

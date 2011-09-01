@@ -25,63 +25,76 @@ function usage() {
               ].join("\n"));
 }
 
-var db = process.argv[2];
-if(! /^https?:\/\//.test(db))
-  db = 'http://' + db;
+function main() {
+  var opts;
+  if(require.isBrowser)
+    opts = require('querystring').parse(window.location.search);
+  else
+    opts = {'db': process.argv[2] };
 
-console.log('Watching:', db);
+  var db = opts.db || "http://127.0.0.1:5984";
 
-var feed = new couch_changes.Feed();
-feed.db = db;
-feed.since = (process.env.since === 'now') ? 'now' : parseInt(process.env.since || '0');
-feed.heartbeat = parseInt(process.env.heartbeat || '3000');
+  if(! /^https?:\/\//.test(db))
+    db = 'http://' + db;
 
-if(process.env.host)
-  feed.headers.host = process.env.host;
+  console.log('Watching:', db);
 
-if(process.env.inactivity)
-  feed.inactivity_ms = parseInt(process.env.inactivity);
+  var feed = new couch_changes.Feed();
+  feed.db = db;
+  feed.since = (process.env.since === 'now') ? 'now' : parseInt(process.env.since || '0');
+  feed.heartbeat = parseInt(process.env.heartbeat || '3000');
 
-function simple_filter(doc, req) {
-  // This is a local filter. It runs on the client side.
-  return true;
+  if(process.env.host)
+    feed.headers.host = process.env.host;
+
+  if(process.env.inactivity)
+    feed.inactivity_ms = parseInt(process.env.inactivity);
+
+  function simple_filter(doc, req) {
+    // This is a local filter. It runs on the client side.
+    return true;
+  }
+
+  if(process.env.filter)
+    feed.filter = simple_filter;
+
+  feed.on('confirm', function() {
+    console.log('Database confirmed: ' + db);
+  })
+
+  feed.on('change', function(change) {
+    console.log('Change:' + JSON.stringify(change));
+  })
+
+  feed.on('timeout', function(state) {
+    var seconds = state.elapsed_ms / 1000;
+    var hb = state.heartbeat / 1000;
+    console.log('Timeout after ' + seconds + 's inactive, heartbeat=' + hb + 's');
+  })
+
+  feed.on('retry', function(state) {
+    console.log('Retry since ' + state.since + ' after ' + state.after + 'ms');
+  })
+
+  feed.on('response', function() {
+    console.log('Streaming response:');
+  })
+
+  feed.on('error', function(er) {
+    //console.error(er);
+    console.error('Changes error ============\n' + er.stack);
+    setTimeout(function() { process.exit(0) }, 100);
+  })
+
+  process.on('uncaughtException', function(er) {
+    console.log('========= UNCAUGHT EXCEPTION; This is bad');
+    console.log(er.stack);
+    setTimeout(function() { process.exit(1) }, 100);
+  })
+
+  feed.follow();
 }
 
-if(process.env.filter)
-  feed.filter = simple_filter;
-
-feed.on('confirm', function() {
-  console.log('Database confirmed: ' + db);
-})
-
-feed.on('change', function(change) {
-  console.log('Change:' + JSON.stringify(change));
-})
-
-feed.on('timeout', function(state) {
-  var seconds = state.elapsed_ms / 1000;
-  var hb = state.heartbeat / 1000;
-  console.log('Timeout after ' + seconds + 's inactive, heartbeat=' + hb + 's');
-})
-
-feed.on('retry', function(state) {
-  console.log('Retry since ' + state.since + ' after ' + state.after + 'ms');
-})
-
-feed.on('response', function() {
-  console.log('Streaming response:');
-})
-
-feed.on('error', function(er) {
-  //console.error(er);
-  console.error('Changes error ============\n' + er.stack);
-  setTimeout(function() { process.exit(0) }, 100);
-})
-
-process.on('uncaughtException', function(er) {
-  console.log('========= UNCAUGHT EXCEPTION; This is bad');
-  console.log(er.stack);
-  setTimeout(function() { process.exit(1) }, 100);
-})
-
-feed.follow();
+module.exports = main;
+if(!require.isBrowser && process.argv[1] == module.filename)
+  main();
