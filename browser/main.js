@@ -1,7 +1,5 @@
 window.process = { env: {} };
 
-var BANNER = "";
-
 if(!Object.keys)
   Object.keys = function(o){
     if(typeof o !== 'object')
@@ -59,7 +57,12 @@ if(!window.console)
 })
 
 define(['events', 'querystring', 'follow/cli'], function(events, querystring, cli) {
-  jQuery('#boot').html('Starting' + (BANNER ? (' '+BANNER) : ""));
+  var welcome = [ 'Starting Follow.'
+                , '<a href="https://github.com/iriscouch/follow">Follow Follow</a>'
+                , 'at GitHub.'
+                ];
+  jQuery('#boot').html('<p>' + welcome.join(' ') + '</p>');
+
   // Set up some faux Node stuff.
   events.EventEmitter = events.EventEmitter2;
   var process = window.process = new events.EventEmitter;
