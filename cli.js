@@ -26,13 +26,7 @@ function usage() {
 }
 
 function main() {
-  var opts;
-  if(require.isBrowser)
-    opts = require('querystring').parse(window.location.search);
-  else
-    opts = {'db': process.argv[2] };
-
-  var db = opts.db || "http://127.0.0.1:5984";
+  var db = require.isBrowser ? (process.env.db || '/_users') : process.argv[2];
 
   if(! /^https?:\/\//.test(db))
     db = 'http://' + db;
@@ -95,6 +89,6 @@ function main() {
   feed.follow();
 }
 
-module.exports = main;
+exports.main = main;
 if(!require.isBrowser && process.argv[1] == module.filename)
   main();

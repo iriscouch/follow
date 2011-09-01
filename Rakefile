@@ -32,7 +32,7 @@ task :export => ([:clean, "cli.js"] + LIBRARY + BROWSER_TOOLS) do |task|
              'paths'   => requirejs_paths,
            }
 
-    main_js = "follow/cli.js"
+    main_js = "main.js"
 
     boot.write([ 'require(',
                    '// Options',
