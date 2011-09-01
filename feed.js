@@ -17,6 +17,7 @@
 var lib = require('./lib')
   , url = require('url')
   , util = require('util')
+  , events = require('events')
   , request = require('request')
   , querystring = require('querystring')
   ;
@@ -28,12 +29,9 @@ var INITIAL_RETRY_DELAY           = 1000;
 
 var FEED_PARAMETERS   = ['since', 'limit', 'feed', 'heartbeat', 'filter', 'include_docs'];
 
-var SUPER_CLASS = require('events').EventEmitter;
-//var SUPER_CLASS = require('stream').Stream;
-
 function Feed (opts) {
   var self = this;
-  SUPER_CLASS.call(self);
+  events.EventEmitter.call(self);
 
   self.feed = 'continuous';
   self.heartbeat         = DEFAULT_HEARTBEAT;
@@ -72,7 +70,7 @@ function Feed (opts) {
   */
 
 } // Feed
-util.inherits(Feed, SUPER_CLASS);
+util.inherits(Feed, events.EventEmitter);
 
 Feed.prototype.start =
 Feed.prototype.follow = function follow_feed() {
