@@ -80,8 +80,8 @@ Feed.prototype.follow = function follow_feed() {
   if(!self.db)
     throw new Error('Database URL required');
 
-  if(self.feed !== 'continuous')
-    throw new Error('The only valid feed option is "continuous"');
+  if(self.feed !== 'continuous' && self.feed !== 'longpoll')
+    throw new Error('The only valid feed options are "continuous" and "longpoll"');
 
   if(typeof self.heartbeat !== 'number')
     throw new Error('Required "heartbeat" value');
@@ -153,6 +153,11 @@ Feed.prototype.query = function query_feed() {
     query_params.include_docs = true;
   }
 
+  // Limit the response size for longpoll.
+  var poll_size = 100;
+  if(query_params.feed == 'longpoll' && (!query_params.limit || query_params.limit > poll_size))
+    query_params.limit = poll_size;
+
   var feed_url = self.db + '/_changes?' + querystring.stringify(query_params);
 
   self.headers.accept = self.headers.accept || 'application/json';
@@ -180,7 +185,7 @@ Feed.prototype.query = function query_feed() {
     return self.retry();
   }
 
-  function on_response(er, resp) {
+  function on_response(er, resp, body) {
     clearTimeout(timeout_id);
 
     if(timed_out) {
@@ -204,7 +209,7 @@ Feed.prototype.query = function query_feed() {
     self.retry_delay = INITIAL_RETRY_DELAY;
 
     self.emit('response');
-    return self.prep(in_flight);
+    return self.prep(in_flight, body);
   }
 
   req.onResponse = on_response;
@@ -219,7 +224,7 @@ Feed.prototype.query = function query_feed() {
   return self.emit('query');
 }
 
-Feed.prototype.prep = function prep_request(req) {
+Feed.prototype.prep = function prep_request(req, body) {
   var self = this;
 
   var now = new Date;
@@ -228,10 +233,43 @@ Feed.prototype.prep = function prep_request(req) {
   self.pending.data        = "";
   self.pending.wait_timer  = null;
 
+  // The inactivity timer is for time between *changes*, or time between the
+  // initial connection and the first change. Therefore it goes here.
+  self.change_at = now;
+  if(self.inactivity_ms)
+    self.inactivity_timer = setTimeout(function() { self.on_inactivity() }, self.inactivity_ms);
+
+  var a, change;
+  if(body) {
+    // Some changes are already in the body.
+    try {
+      body = JSON.parse(body);
+    } catch(er) {
+      return self.die(er);
+    }
+
+    body.results = body.results || [];
+    for(a = 0; a < body.results.length; a++) {
+      change = body.results[a];
+      if(!change.seq)
+        return self.die(new Error('Change has no .seq field: ' + json));
+      self.on_change(change);
+    }
+
+    return self.retry();
+  }
+
+  var handlers = ['data', 'end', 'error'];
+  handlers.forEach(function(ev) {
+    req.on(ev, handler_for(ev));
+  })
+  return self.wait();
+
   function handler_for(ev) {
     var name = 'on_couch_' + ev;
     var inner_handler = self[name];
 
+    return handle_confirmed_req_event;
     function handle_confirmed_req_event() {
       if(self.pending.request === req)
         return inner_handler.apply(self, arguments);
@@ -258,22 +296,7 @@ Feed.prototype.prep = function prep_request(req) {
 
       self.log.warn('Old "'+ev+'"' + msg);
     }
-
-    return handle_confirmed_req_event;
   }
-
-  var handlers = ['data', 'end', 'error'];
-  handlers.forEach(function(ev) {
-    req.on(ev, handler_for(ev));
-  })
-
-  // The inactivity timer is for time between *changes*, or time between the
-  // initial connection and the first change. Therefore it goes here.
-  self.change_at = now;
-  if(self.inactivity_ms)
-    self.inactivity_timer = setTimeout(function() { self.on_inactivity() }, self.inactivity_ms);
-
-  return self.wait();
 }
 
 Feed.prototype.wait = function wait_for_event() {
@@ -483,6 +506,11 @@ function destroy_response(response) {
   if(!response)
     return;
 
-  response.connection.end();
-  response.connection.destroy();
+  if(typeof response.abort === 'function')
+    response.abort();
+
+  if(response.connection) {
+    response.connection.end();
+    response.connection.destroy();
+  }
 }
