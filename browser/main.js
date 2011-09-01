@@ -68,9 +68,8 @@ define(['events', 'querystring', 'follow/cli'], function(events, querystring, cl
 
   process.stdout = {};
   process.stdout.write = function(x) {
-    var con = jQuery('#results');
-    var html = con.html();
-    con.html(html + x);
+    var con = jQuery('#con');
+    con.append(x);
   }
 
   process.exit = function(code) {
