@@ -91,6 +91,7 @@ Feed.prototype.follow = function follow_feed() {
   self.log = lib.log4js().getLogger(parsed.hostname + parsed.pathname);
   self.log.setLevel(process.env.changes_level || "info");
 
+  self.emit('start');
   return self.confirm();
 }
 
@@ -100,7 +101,6 @@ Feed.prototype.confirm = function confirm_feed() {
   self.db_safe = lib.scrub_creds(self.db);
 
   self.log.debug('Checking database: ' + self.db_safe);
-  self.emit('confirm');
 
   var confirm_timeout = self.heartbeat * 3; // Give it time to look up the name, connect, etc.
   var timeout_id = setTimeout(function() {
@@ -133,6 +133,7 @@ Feed.prototype.confirm = function confirm_feed() {
       self.log.debug('Query since "now" will start at ' + self.since);
     }
 
+    self.emit('confirm');
     return self.query();
   })
 }
@@ -150,7 +151,7 @@ Feed.prototype.query = function query_feed() {
     delete query_params.filter;
 
   if(typeof self.filter === 'function' && !query_params.include_docs) {
-    self.log.info('Enabling include_docs for client-side filter');
+    self.log.debug('Enabling include_docs for client-side filter');
     query_params.include_docs = true;
   }
 
@@ -203,6 +204,8 @@ Feed.prototype.query = function query_feed() {
 
     self.log.debug('Good response: ' + in_flight.id());
     self.retry_delay = INITIAL_RETRY_DELAY;
+
+    self.emit('response');
     return self.prep(in_flight);
   }
 
@@ -359,8 +362,8 @@ Feed.prototype.retry = function retry() {
   clearTimeout(self.pending.wait_timer);
   self.pending.wait_timer = null;
 
-  self.log.info('Retrying since=' + self.since + ' after ' + self.retry_delay + 'ms: ' + self.db_safe);
-  self.emit('retry');
+  self.log.debug('Retrying since=' + self.since + ' after ' + self.retry_delay + 'ms: ' + self.db_safe);
+  self.emit('retry', {since:self.since, after:self.retry_delay, db:self.db_safe});
 
   setTimeout(function() { self.query() }, self.retry_delay);
 
