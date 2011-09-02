@@ -30,19 +30,20 @@ function main() {
   var feed = new couch_changes.Feed();
   feed.db = db;
   feed.since = (process.env.since === 'now') ? 'now' : parseInt(process.env.since || '0');
-  feed.heartbeat = parseInt(process.env.heartbeat || '3000');
+
+  feed.heartbeat = (process.env.heartbeat || '3000').replace(/s$/, '000');
+  feed.heartbeat = parseInt(feed.heartbeat);
 
   if(require.isBrowser)
     feed.feed = 'longpoll';
-
   if(process.env.host)
     feed.headers.host = process.env.host;
-
   if(process.env.inactivity)
     feed.inactivity_ms = parseInt(process.env.inactivity);
-
   if(process.env.filter)
     feed.filter = process.env.filter;
+  if(process.env.limit)
+    feed.limit = parseInt(process.env.limit);
 
   feed.on('confirm', function() {
     puts('Database confirmed: ' + db);
