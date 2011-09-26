@@ -445,7 +445,7 @@ Feed.prototype.on_change = function on_change(change) {
     return self.on_good_change(change);
 
   if(!change.doc)
-    return self.die(new Error('Internal filter deeds .doc in change ' + change.seq));
+    return self.die(new Error('Internal filter needs .doc in change ' + change.seq));
 
   // Don't let the filter mutate the real data.
   var doc = lib.JDUP(change.doc);
