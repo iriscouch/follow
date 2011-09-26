@@ -426,8 +426,6 @@ Feed.prototype.die = function(er) {
     self.log.debug('Destroying req ' + req.id());
     destroy_req(req);
   }
-
-  //throw er;
 }
 
 Feed.prototype.on_change = function on_change(change) {
