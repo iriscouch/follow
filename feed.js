@@ -413,6 +413,7 @@ Feed.prototype.on_couch_error = function on_couch_error(er) {
   return self.retry();
 }
 
+Feed.prototype.stop =
 Feed.prototype.die = function(er) {
   var self = this;
 
@@ -426,6 +427,7 @@ Feed.prototype.die = function(er) {
     destroy_req(req);
   }
 
+  self.emit('stop', er);
   if(er)
     self.emit('error', er);
 }
