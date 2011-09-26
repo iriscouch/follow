@@ -416,9 +416,8 @@ Feed.prototype.on_couch_error = function on_couch_error(er) {
 Feed.prototype.die = function(er) {
   var self = this;
 
-  self.log.fatal('Fatal error: ' + er.stack);
-  
-  self.emit('error', er);
+  if(er)
+    self.log.fatal('Fatal error: ' + er.stack);
 
   var req = self.pending.request;
   self.pending.request = null;
@@ -426,6 +425,9 @@ Feed.prototype.die = function(er) {
     self.log.debug('Destroying req ' + req.id());
     destroy_req(req);
   }
+
+  if(er)
+    self.emit('error', er);
 }
 
 Feed.prototype.on_change = function on_change(change) {
