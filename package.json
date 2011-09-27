@@ -1,5 +1,5 @@
 { "name": "follow"
-, "version": "0.2.0"
+, "version": "0.3.0r1"
 , "author": { "name": "Jason Smith"
             , "email": "jhs@iriscouch.com" }
 , "description": "Extremely robust, fault-tolerant CouchDB changes follower"
