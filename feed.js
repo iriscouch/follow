@@ -87,7 +87,7 @@ Feed.prototype.follow = function follow_feed() {
     throw new Error('Required "heartbeat" value');
 
   self.log = lib.log4js().getLogger(self.db);
-  self.log.setLevel(process.env.log || "info");
+  self.log.setLevel(process.env.follow_log_level || "info");
 
   self.emit('start');
   return self.confirm();
