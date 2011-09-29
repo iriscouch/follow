@@ -40,18 +40,19 @@ function main() {
     feed.headers.host = process.env.host;
   if(process.env.inactivity)
     feed.inactivity_ms = parseInt(process.env.inactivity);
-  if(process.env.filter)
-    feed.filter = process.env.filter;
   if(process.env.limit)
     feed.limit = parseInt(process.env.limit);
 
-  feed.filter = feed.filter || simple_filter;
-  function simple_filter(doc, req) {
+  feed.query_params.pid = process.pid;
+  feed.filter = process.env.filter || example_filter;
+  function example_filter(doc, req) {
     // This is a local filter. It runs on the client side.
+    var label = 'Filter ' + (req.query.pid || '::');
+
     if(process.env.show_doc)
-      console.log('Filter doc: ' + JSON.stringify(doc));
+      console.log(label + ' doc: ' + JSON.stringify(doc));
     if(process.env.show_req)
-      console.log('Filter "' + doc._id + '" with req: ' + JSON.stringify(req));
+      console.log(label + ' for ' + doc._id + ' req: ' + JSON.stringify(req));
     return true;
   }
 

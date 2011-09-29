@@ -59,6 +59,7 @@ All of the CouchDB _changes options are allowed. See http://guide.couchdb.org/dr
 * `filter` |
   * **Either** a path to design document filter, e.g. `app/important`
   * **Or** a Javascript `function(doc, req) { ... }` which should return true or false
+* `query_params` | **Optional** for use in with `filter` functions, passed as `req.query` to the filter function
 
 Besides the CouchDB options, more are available:
 
@@ -81,7 +82,7 @@ The main API is a thin wrapper around the EventEmitter API.
     feed.inactivity_ms = 86400 * 1000;
 
     feed.filter = function(doc, req) {
-      // req.query is the parameters from the _changes request.
+      // req.query is the parameters from the _changes request and also feed.query_params.
       console.log('Filtering for query: ' + JSON.stringify(req.query));
 
       if(doc.stinky || doc.ugly)

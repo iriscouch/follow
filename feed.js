@@ -45,6 +45,8 @@ function Feed (opts) {
   self.since = 0;
   self.retry_delay = INITIAL_RETRY_DELAY; // ms
 
+  self.query_params = {}; // Extra `req.query` values for filter functions
+
   opts = opts || {};
   if(typeof opts === 'string')
     opts = {'db': opts};
@@ -139,7 +141,8 @@ Feed.prototype.confirm = function confirm_feed() {
 Feed.prototype.query = function query_feed() {
   var self = this;
 
-  var query_params = {};
+  var query_params = JSON.parse(JSON.stringify(self.query_params));
+
   FEED_PARAMETERS.forEach(function(key) {
     if(key in self)
       query_params[key] = self[key];
