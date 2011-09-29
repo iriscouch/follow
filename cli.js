@@ -45,6 +45,16 @@ function main() {
   if(process.env.limit)
     feed.limit = parseInt(process.env.limit);
 
+  feed.filter = feed.filter || simple_filter;
+  function simple_filter(doc, req) {
+    // This is a local filter. It runs on the client side.
+    if(process.env.show_doc)
+      console.log('Filter doc: ' + JSON.stringify(doc));
+    if(process.env.show_req)
+      console.log('Filter "' + doc._id + '" with req: ' + JSON.stringify(req));
+    return true;
+  }
+
   feed.on('confirm', function() {
     puts('Database confirmed: ' + db);
   })
