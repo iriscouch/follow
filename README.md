@@ -59,6 +59,7 @@ All of the CouchDB _changes options are allowed. See http://guide.couchdb.org/dr
 * `filter` |
   * **Either** a path to design document filter, e.g. `app/important`
   * **Or** a Javascript `function(doc, req) { ... }` which should return true or false
+* `query_params` | **Optional** for use in conjunction with `filter` for dynamic changes filter functions. Passes specific query parameter tuples into the query string
 
 Besides the CouchDB options, more are available:
 

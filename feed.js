@@ -144,6 +144,12 @@ Feed.prototype.query = function query_feed() {
     if(key in self)
       query_params[key] = self[key];
   })
+  
+  if("query_params" in self) {
+    Object.keys(self.query_params).forEach(function(key) {
+      query_params[key] = self.query_params[key];
+    })
+  }
 
   if(typeof query_params.filter !== 'string')
     delete query_params.filter;
