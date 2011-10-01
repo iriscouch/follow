@@ -1,6 +1,8 @@
 # Follow: CouchDB changes notifier for NodeJS
 
-Follow (upper-case *F*) comes from an internal Iris Couch project used in production for over a year.
+Follow (upper-case *F*) comes from an internal Iris Couch project used in production for over a year. It works in the browser (beta) and is available as an NPM module.
+
+    $ npm install follow
 
 ## Objective
 
