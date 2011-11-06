@@ -1,5 +1,5 @@
 { "name": "follow"
-, "version": "0.3.0r1"
+, "version": "0.4.0"
 , "author": { "name": "Jason Smith"
             , "email": "jhs@iriscouch.com" }
 , "description": "Extremely robust, fault-tolerant CouchDB changes follower"
@@ -7,7 +7,7 @@
 , "repository": { "type": "git"
                 , "url": "git://github.com/iriscouch/follow" }
 , "engines": [ "node" ]
-, "dependencies" : { "request" : ">=1.9.6"
+, "dependencies" : { "request" : "2.2.0"
                    }
 , "main": "api"
 , "bin": {"follow": "./cli.js"}
