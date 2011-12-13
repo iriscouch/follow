@@ -44,8 +44,4 @@ try {
   exports.log4js = null;
 }
 
-if(typeof exports.log4js !== 'function')
-  exports.log4js = function() {
-    return { 'getLogger': function() { return noops }
-           }
-  }
+exports.log4js = exports.log4js || { 'getLogger': function() { return noops } }
