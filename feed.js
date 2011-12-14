@@ -138,9 +138,7 @@ Feed.prototype.confirm = function confirm_feed() {
   })
   
   r.on('response', function () {
-    r.req.on('socket', function (s) {
-      s.emit('agentRemove')
-    })
+    r.req.socket.emit('agentRemove')
   })
 }
 
