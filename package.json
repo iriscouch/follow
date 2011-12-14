@@ -9,6 +9,9 @@
 , "engines": [ "node" ]
 , "dependencies" : { "request" : "~2.2.5"
                    }
-, "main": "api"
+, "devDependencies": { "tap": "~0.1.3"
+                     }
+
+, "main": "./api.js"
 , "bin": {"follow": "./cli.js"}
 }
