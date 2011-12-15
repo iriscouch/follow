@@ -227,6 +227,10 @@ Feed.prototype.query = function query_feed() {
   in_flight.created_at = now;
   in_flight.id = function() { return lib.JP(lib.JS(this.created_at)) };
 
+  in_flight.on('response', function() {
+    in_flight.req.socket.emit('agentRemove')
+  })
+
   // Shorten the timestamp, used for debugging.
   //in_flight.id = function() { return /\.(\d\d\d)Z$/.exec(lib.JP(lib.JS(this.created_at)))[1] };
 
