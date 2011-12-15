@@ -44,3 +44,18 @@ test('Follow API', function(t) {
     }
   })
 })
+
+test("Confirmation request behavior", function(t) {
+  var feed = follow(DB, function() {})
+
+  var confirm_req = null
+  feed.on('confirm_request', function(req) { confirm_req = req })
+
+  setTimeout(check_req, RTT * 2)
+  function check_req() {
+    t.ok(confirm_req, 'The confirm_request event should have fired by now')
+
+    feed.stop()
+    t.end()
+  }
+})

@@ -113,7 +113,10 @@ Feed.prototype.confirm = function confirm_feed() {
   var headers = lib.JP(lib.JS(self.headers));
   headers.accept = 'application/json';
 
-  request({uri:self.db, headers:headers}, function(er, resp, body) {
+  var req = request({'uri':self.db, 'headers':headers}, db_response)
+  self.emit('confirm_request', req)
+
+  function db_response(er, resp, body) {
     clearTimeout(timeout_id);
 
     if(er)
@@ -138,7 +141,7 @@ Feed.prototype.confirm = function confirm_feed() {
 
     self.emit('confirm');
     return self.query();
-  })
+  }
 }
 
 Feed.prototype.query = function query_feed() {
