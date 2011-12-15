@@ -19,7 +19,10 @@ var lib = require('./lib')
   , events = require('events')
   , request = require('request')
   , querystring = require('querystring')
-  ;
+
+// Use the library timeout functions, primarily so the test suite can catch errors.
+var setTimeout = lib.setTimeout
+  , clearTimeout = lib.clearTimeout
 
 var DEFAULT_HEARTBEAT = 30000;
 var HEARTBEAT_TIMEOUT_COEFFICIENT = 1.25; // E.g. heartbeat 1000ms would trigger a timeout after 1250ms of no heartbeat.
@@ -358,12 +361,23 @@ Feed.prototype.on_couch_data = function on_couch_data(data, req) {
       if(!seq)
         return self.die(new Error('Change has no .seq field: ' + json));
 
-      self.on_change(change);
+      // on_change() might work its way all the way to a "change" event, and the listener
+      // might call .stop(), which means among other things that no more events are desired.
+      // The die() code sets a self.dead flag to indicate this.
+      if(self.dead)
+        self.log.info('Dead feed skipping change ' + seq)
+      else
+        self.on_change(change);
     }
   }
 
   self.pending.data = buf;
-  self.wait();
+
+  // Once again, on_change() may have been called, triggering a .die() call.
+  if(self.dead)
+    self.log.info('Dead feed skipping wait')
+  else
+    self.wait();
 }
 
 Feed.prototype.on_timeout = function on_timeout() {
@@ -429,6 +443,9 @@ Feed.prototype.die = function(er) {
 
   if(er)
     self.log.fatal('Fatal error: ' + er.stack);
+
+  // Warn code executing later that death has occured.
+  self.dead = true
 
   var req = self.pending.request;
   self.pending.request = null;
