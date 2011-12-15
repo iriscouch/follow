@@ -312,7 +312,8 @@ Feed.prototype.wait = function wait_for_event() {
     return self.die(new Error('wait() called but there is already a wait_timer: ' + self.pending.wait_timer));
 
   var timeout_ms = self.heartbeat * HEARTBEAT_TIMEOUT_COEFFICIENT;
-  var msg = 'Req ' + self.pending.request.id() + ' timeout=' + timeout_ms;
+  var req_id = self.pending.request && self.pending.request.id()
+  var msg = 'Req ' + req_id + ' timeout=' + timeout_ms;
   if(self.inactivity_ms)
     msg += ', inactivity=' + self.inactivity_ms;
   msg += ': ' + self.db_safe;
