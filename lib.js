@@ -39,7 +39,8 @@ var noops = { "trace": noop
             }
 
 try {
-  exports.log4js = require('log4js');
+  if(! process.env.log_plain)
+    exports.log4js = require('log4js');
 } catch(e) {
   exports.log4js = null;
 }
