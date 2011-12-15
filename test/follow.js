@@ -18,6 +18,8 @@ test('Follow API', function(t) {
       , saw = {}
 
     var feed = follow(DB, function(er, change) {
+      t.is(this, feed, 'Callback "this" value is the feed object')
+
       i += 1
       t.notOk(er, 'No error coming back from follow: ' + i)
       t.equal(change.seq, i, 'Change #'+i+' should have seq_id='+i)
