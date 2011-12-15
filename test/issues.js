@@ -27,9 +27,8 @@ test('Issue #8', function(t) {
     t.false(er, 'Got a feed')
     t.equal(change.seq, 1, 'Handler only runs for one change')
 
-    var feed = this
-    feed.on('stop', check_timeouts)
-    feed.stop()
+    this.on('stop', check_timeouts)
+    this.stop()
 
     function check_timeouts() {
       t.equal(timeouts().length, 0, 'No timeouts by the time stop fires')
