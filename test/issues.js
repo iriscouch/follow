@@ -48,6 +48,25 @@ test('Issue #8', function(t) {
   })
 })
 
+test('Issue #9', function(t) {
+  var timeouts = timeout_tracker()
+
+  follow({db:DB, inactivity_ms:30000}, function(er, change) {
+    if(change.seq == 1)
+      return // Let it run through once, just for fun.
+
+    t.equal(change.seq, 2, 'The second change will be the last')
+    this.stop()
+
+    setTimeout(check_inactivity_timer, 250)
+    function check_inactivity_timer() {
+      t.equal(timeouts().length, 0, 'No lingering timeouts after teardown: ' + tims(timeouts()))
+      timeouts().forEach(function(id) { clearTimeout(id) })
+      t.end()
+    }
+  })
+})
+
 //
 // Utilities
 //

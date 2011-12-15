@@ -447,6 +447,12 @@ Feed.prototype.die = function(er) {
   // Warn code executing later that death has occured.
   self.dead = true
 
+  clearTimeout(self.inactivity_timer)
+  clearTimeout(self.pending.wait_timer)
+
+  self.inactivity_timer = null
+  self.pending.wait_timer = null
+
   var req = self.pending.request;
   self.pending.request = null;
   if(req) {
