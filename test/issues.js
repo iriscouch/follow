@@ -9,28 +9,7 @@ var lib = require('../lib')
   , DB = process.env.db || 'http://localhost:5984/follow_test'
 
 test('Issue #8', function(t) {
-  // Track timeouts during the run.
-  var timeouts = []
-  lib.timeouts(setT, clearT)
-
-  function setT() {
-    var result = setTimeout.apply(this, arguments)
-    var stack = traceback()
-      , up = stack[2]
-    result.caller = (up.method || up.name || '<a>') + ' in ' + up.file + ':' + up.line
-    timeouts.push(result)
-    //console.error('Timeouts: ' + JSON.stringify(timeouts.map(function(X) { return X.caller })))
-    return result
-  }
-
-  function clearT(id) {
-    var stack = traceback()
-      , up = stack[2]
-      , caller = (up.method || up.name || '<a>') + ' in ' + up.file + ':' + up.line
-    timeouts = timeouts.filter(function(tim) { return tim !== id })
-    //console.error('Timeouts: ' + JSON.stringify(timeouts.map(function(X) { return X.caller })))
-    return clearTimeout.apply(this, arguments)
-  }
+  var timeouts = timeout_tracker()
 
   // Detect inappropriate timeouts after the run.
   var runs = {'set':false, 'clear':false}
@@ -53,14 +32,14 @@ test('Issue #8', function(t) {
     feed.stop()
 
     function check_timeouts() {
-      t.equal(timeouts.length, 0, 'No timeouts by the time stop fires')
+      t.equal(timeouts().length, 0, 'No timeouts by the time stop fires')
 
       lib.timeouts(badSetT, badClearT)
 
       // And give it a moment to try something bad.
       setTimeout(final_timeout_check, 250)
       function final_timeout_check() {
-        t.equal(timeouts.length, 0, 'No lingering timeouts after teardown')
+        t.equal(timeouts().length, 0, 'No lingering timeouts after teardown: ' + tims(timeouts()))
         t.false(runs.set, 'No more setTimeouts ran')
         t.false(runs.clear, 'No more clearTimeouts ran')
 
@@ -69,3 +48,39 @@ test('Issue #8', function(t) {
     }
   })
 })
+
+function timeout_tracker() {
+  // Return an array tracking in-flight timeouts.
+  var timeouts = []
+
+  lib.timeouts(set, clear)
+  return function() { return timeouts }
+
+  var set_num = 0
+  function set() {
+    var result = setTimeout.apply(this, arguments)
+
+    var caller = traceback()[2]
+    set_num += 1
+    result.caller = '('+set_num+') ' + (caller.method || caller.name || '<a>') + ' in ' + caller.file + ':' + caller.line
+    //console.error('setTimeout: ' + result.caller)
+
+    timeouts.push(result)
+    //console.error('inflight ('+timeouts.length+'): ' + tims(timeouts))
+    return result
+  }
+
+  function clear(id) {
+    //var caller = traceback()[2]
+    //caller = (caller.method || caller.name || '<a>') + ' in ' + caller.file + ':' + caller.line
+    //console.error('clearTimeout: ' + (id && id.caller) + ' <- ' + caller)
+
+    timeouts = timeouts.filter(function(element) { return element !== id })
+    //console.error('inflight ('+timeouts.length+'): ' + tims(timeouts))
+    return clearTimeout.apply(this, arguments)
+  }
+}
+
+function tims(arr) {
+  return JSON.stringify(arr.map(function(timer) { return timer.caller }))
+}
