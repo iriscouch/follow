@@ -7,22 +7,8 @@ var tap = require('tap')
 var lib = require('../lib')
   , follow = require('../api')
   , DB = process.env.db || 'http://localhost:5984/follow_test'
-  , RTT
-
-test('Find the RTT', function(t) {
-  request({uri:DB+'/_local/rtt', json:true}, function(er, res) {
-    t.false(er, 'Fetch the RTT value')
-    t.type(res.body.ms, 'number', 'Got the RTT milliseconds')
-    t.ok(res.body.ms > 0, 'RTT makes sense: ' + res.body.ms)
-
-    RTT = res.body.ms
-    t.end()
-  })
-})
 
 test('Issue #8', function(t) {
-  t.ok(RTT, 'RTT is known')
-
   // Track timeouts during the run.
   var timeouts = []
   lib.timeouts(setT, clearT)
