@@ -5,18 +5,15 @@ var tap = require('tap')
 
 var follow = require('../api')
   , DB = process.env.db || 'http://localhost:5984/follow_test'
-  , RTT
 
 test('Couch is there', function(t) {
   request.del({uri:DB, json:true}, function(er, res) {
-    if(er) throw er;
-    if(!res.body || res.body.error && res.body.error != 'not_found')
-      throw new Error('Failed to delete: ' + DB)
+    t.false(er, 'Clear old test DB: ' + DB)
+    t.ok(!res.body.error || res.body.error == 'not_found', 'Couch cleared old test DB: ' + DB)
 
     request.put({uri:DB, json:true}, function(er, res) {
-      if(er) throw er;
-      if(!res.body || res.body.error && res.body.error != 'not_found')
-        throw new Error('Failed to create: ' + DB)
+      t.false(er, 'Create new test DB: ' + DB)
+      t.false(res.body.error, 'Couch created new test DB: ' + DB)
 
       var begin = new Date
       var values = ['first', 'second', 'third']
@@ -27,22 +24,20 @@ test('Couch is there', function(t) {
 
       var count = 0;
       function posted(er, res) {
-        if(er) throw er;
-        if(res.statusCode != 201)
-          throw new Error('POST document failure')
+        t.false(er, 'POST document')
+        t.equal(res.statusCode, 201, 'Couch stored test document')
 
         count += 1
         if(count == values.length) {
           RTT = (new Date) - begin
-          t.end()
+          request.post({uri:DB, json:{_id:'_local/rtt', ms:(new Date)-begin}}, function(er, res) {
+            t.false(er, 'Store RTT value')
+            t.equal(res.statusCode, 201, 'Couch stored RTT value')
+
+            t.end()
+          })
         }
       }
     })
   })
-})
-
-test('Follow API', function(t) {
-  t.ok(RTT, 'The previous test set the base round trip time')
-
-  t.end()
 })
