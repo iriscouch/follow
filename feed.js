@@ -230,7 +230,7 @@ Feed.prototype.query = function query_feed() {
   // Shorten the timestamp, used for debugging.
   //in_flight.id = function() { return /\.(\d\d\d)Z$/.exec(lib.JP(lib.JS(this.created_at)))[1] };
 
-  return self.emit('query');
+  return self.emit('query', in_flight)
 }
 
 Feed.prototype.prep = function prep_request(req, body) {

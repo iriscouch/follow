@@ -49,11 +49,18 @@ test("Confirmation request behavior", function(t) {
   var feed = follow(DB, function() {})
 
   var confirm_req = null
+    , follow_req = null
+
   feed.on('confirm_request', function(req) { confirm_req = req })
+  feed.on('query', function(req) { follow_req = req })
 
   setTimeout(check_req, RTT * 2)
   function check_req() {
     t.ok(confirm_req, 'The confirm_request event should have fired by now')
+    t.ok(confirm_req.agent, 'The confirm request has an agent')
+
+    t.ok(follow_req, 'The follow_request event should have fired by now')
+    t.ok(follow_req.agent, 'The follow request has an agent')
 
     feed.stop()
     t.end()
