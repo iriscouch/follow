@@ -48,14 +48,18 @@ test('Issue #8', function(t) {
   })
 })
 
+//
+// Utilities
+//
+
 function timeout_tracker() {
   // Return an array tracking in-flight timeouts.
   var timeouts = []
+  var set_num = 0
 
   lib.timeouts(set, clear)
   return function() { return timeouts }
 
-  var set_num = 0
   function set() {
     var result = setTimeout.apply(this, arguments)
 
