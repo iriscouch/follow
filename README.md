@@ -4,6 +4,20 @@ Follow (upper-case *F*) comes from an internal Iris Couch project used in produc
 
     $ npm install follow
 
+## Example
+
+This looks much like the [request][req] API.
+
+```javascript
+var follow = require('follow');
+follow("https://example.iriscouch.com/boogie", function(error, change) {
+  if(!error)
+    console.log("Got change number " + change.seq + ": " + change.id);
+})
+```
+
+The *error* parameter to the callback will basically always be `null`.
+
 ## Objective
 
 The API must be very simple: notify me every time a change happens in the DB. Also, never fail.
@@ -27,30 +41,17 @@ If CouchDB permanently crashes, there is an option of failure modes:
 * **Default:** Simply never call back with a change again
 * **Optional:** Specify an *inactivity* timeout. If no changes happen by the timeout, Follow will signal an error.
 
-## Very Simple API
-
-This looks much like the `request` package.
-
-    var follow = require('follow');
-    follow("https://example.iriscouch.com/boogie", function(error, change) {
-      if(!error) {
-        console.log("Got change number " + change.seq + ": " + change.id);
-      }
-    })
-
-The `error` parameter to the callback will basically always be `null`.
-
-The first argument can be an object, useful to include the documents in the feed.
-
-    follow({db:"https://example.iriscouch.com/boogie", include_docs:true}, function(error, change) {
-      if(!error) {
-        console.log("Change " + change.seq + " has " + Object.keys(change.doc).length + " fields");
-      }
-    })
-
-### follow(options, callback)
+### Simple API: follow(options, callback)
 
 The first argument is an options object. The only required option is `db`. Instead of an object, you can use a string to indicate the `db` value.
+
+```javascript
+follow({db:"https://example.iriscouch.com/boogie", include_docs:true}, function(error, change) {
+  if(!error) {
+    console.log("Change " + change.seq + " has " + Object.keys(change.doc).length + " fields");
+  }
+})
+```
 
 All of the CouchDB _changes options are allowed. See http://guide.couchdb.org/draft/notifications.html.
 
@@ -72,36 +73,38 @@ Besides the CouchDB options, more are available:
 
 The main API is a thin wrapper around the EventEmitter API.
 
-    var follow = require('follow');
+```javascript
+var follow = require('follow');
 
-    var opts = {}; // Same options paramters as before
-    var feed = new follow.Feed(opts);
+var opts = {}; // Same options paramters as before
+var feed = new follow.Feed(opts);
 
-    // You can also set values directly.
-    feed.db            = "http://example.iriscouch.com/boogie";
-    feed.since         = 3;
-    feed.heartbeat     = 30    * 1000
-    feed.inactivity_ms = 86400 * 1000;
+// You can also set values directly.
+feed.db            = "http://example.iriscouch.com/boogie";
+feed.since         = 3;
+feed.heartbeat     = 30    * 1000
+feed.inactivity_ms = 86400 * 1000;
 
-    feed.filter = function(doc, req) {
-      // req.query is the parameters from the _changes request and also feed.query_params.
-      console.log('Filtering for query: ' + JSON.stringify(req.query));
+feed.filter = function(doc, req) {
+  // req.query is the parameters from the _changes request and also feed.query_params.
+  console.log('Filtering for query: ' + JSON.stringify(req.query));
 
-      if(doc.stinky || doc.ugly)
-        return false;
-      return true;
-    }
+  if(doc.stinky || doc.ugly)
+    return false;
+  return true;
+}
 
-    feed.on('change', function(change) {
-      console.log('Doc ' + change.id + ' in change ' + change.seq + ' is neither stinky nor ugly.');
-    })
+feed.on('change', function(change) {
+  console.log('Doc ' + change.id + ' in change ' + change.seq + ' is neither stinky nor ugly.');
+})
 
-    feed.on('error', function(er) {
-      console.error('Since Follow always retries on errors, this must be serious');
-      throw er;
-    })
+feed.on('error', function(er) {
+  console.error('Since Follow always retries on errors, this must be serious');
+  throw er;
+})
 
-    feed.follow();
+feed.follow();
+```
 
 ## Error conditions
 
@@ -112,3 +115,5 @@ Follow is happy to retry over and over, for all eternity. It will only emit an e
 * JSON parse error, which should be impossible from CouchDB
 * Invalid change object format, which should be impossible from CouchDB
 * Internal error, if the internal state seems wrong, e.g. cancelling a timeout that already expired, etc. Follow tries to fail early.
+
+[req]: https://github.com/mikeal/request
