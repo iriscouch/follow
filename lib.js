@@ -38,7 +38,10 @@ if(require.isBrowser)
 else
   verbose = (process.env.verbose === 'true');
 
-var noop = function() {};
+var noop = process.env.TAP_DIAG
+            ? console.error
+            : function() {}
+
 var noops = { "trace": noop
             , "debug": VERBOSE ? console.log   : noop
             , "info" : VERBOSE ? console.info  : noop
