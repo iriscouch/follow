@@ -20,6 +20,17 @@ exports.JP = JSON.parse;
 exports.JS = JSON.stringify;
 exports.JDUP = function(obj) { return JSON.parse(JSON.stringify(obj)) };
 
+var timeouts = { 'setTimeout': setTimeout
+               , 'clearTimeout': clearTimeout
+               }
+
+exports.setTimeout   = function() { return timeouts.setTimeout.apply(this, arguments) }
+exports.clearTimeout = function() { return timeouts.clearTimeout.apply(this, arguments) }
+exports.timeouts = function(set, clear) {
+  timeouts.setTimeout = set
+  timeouts.clearTimeout = clear
+}
+
 // Wrap log4js so it will not be a dependency.
 var VERBOSE;
 if(require.isBrowser)
