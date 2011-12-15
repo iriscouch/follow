@@ -3,6 +3,7 @@
 , "author": { "name": "Jason Smith"
             , "email": "jhs@iriscouch.com" }
 , "description": "Extremely robust, fault-tolerant CouchDB changes follower"
+, "keywords": ["couchdb", "changes", "sleep", "sleepy"]
 , "homepage": "http://github.com/iriscouch/follow"
 , "repository": { "type": "git"
                 , "url": "git://github.com/iriscouch/follow" }
