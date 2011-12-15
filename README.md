@@ -116,4 +116,8 @@ Follow is happy to retry over and over, for all eternity. It will only emit an e
 * Invalid change object format, which should be impossible from CouchDB
 * Internal error, if the internal state seems wrong, e.g. cancelling a timeout that already expired, etc. Follow tries to fail early.
 
+## License
+
+Apache 2.0
+
 [req]: https://github.com/mikeal/request
