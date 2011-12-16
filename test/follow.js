@@ -3,29 +3,17 @@ var tap = require('tap')
   , util = require('util')
   , request = require('request')
 
-var follow = require('../api')
-  , DB = process.env.db || 'http://localhost:5984/follow_test'
-  , RTT
+var couch = require('./couch')
+  , follow = require('../api')
 
-test('Find the RTT', function(t) {
-  request({uri:DB+'/_local/rtt', json:true}, function(er, res) {
-    t.false(er, 'Fetch the RTT value')
 
-    t.type(res.body.ms, 'number', 'Got the RTT milliseconds')
-    t.ok(res.body.ms > 0, 'RTT makes sense: ' + res.body.ms)
-
-    RTT = res.body.ms
-    t.end()
-  })
-})
+couch.setup(test)
 
 test('Follow API', function(t) {
-  t.ok(RTT, 'RTT is known')
-
   var i = 0
     , saw = {}
 
-  var feed = follow(DB, function(er, change) {
+  var feed = follow(couch.DB, function(er, change) {
     t.is(this, feed, 'Callback "this" value is the feed object')
 
     i += 1
@@ -46,7 +34,7 @@ test('Follow API', function(t) {
 })
 
 test("Confirmation request behavior", function(t) {
-  var feed = follow(DB, function() {})
+  var feed = follow(couch.DB, function() {})
 
   var confirm_req = null
     , follow_req = null
@@ -54,7 +42,7 @@ test("Confirmation request behavior", function(t) {
   feed.on('confirm_request', function(req) { confirm_req = req })
   feed.on('query', function(req) { follow_req = req })
 
-  setTimeout(check_req, RTT * 2)
+  setTimeout(check_req, couch.rtt() * 2)
   function check_req() {
     t.ok(confirm_req, 'The confirm_request event should have fired by now')
     t.ok(confirm_req.agent, 'The confirm request has an agent')
