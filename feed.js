@@ -134,9 +134,14 @@ Feed.prototype.confirm = function confirm_feed() {
 
     self.log.debug('Confirmed db: ' + self.db_safe);
 
-    if(self.since === 'now') {
-      self.since = db.update_seq;
-      self.log.debug('Query since "now" will start at ' + self.since);
+    if(self.since == 'now') {
+      self.log.debug('Query since "now" is the same as query since -1')
+      self.since = -1
+    }
+
+    if(self.since < 0) {
+      self.log.debug('Query since '+self.since+' will start at ' + (db.update_seq + self.since + 1))
+      self.since = db.update_seq + self.since + 1
     }
 
     self.emit('confirm');

@@ -10,6 +10,40 @@ var lib = require('../lib')
 
 couch.setup(test)
 
+test('Issue #5', function(t) {
+  var saw = { loops:0, seqs:{} }
+
+  var saw_change = false
+  // -2 means I want to see the last change.
+  var feed = follow({'db':couch.DB, since:-2}, function(er, change) {
+    t.equal(change.seq, 3, 'Got the latest change, 3')
+    t.false(saw_change, 'Only one callback run for since=-2 (assuming no subsequent change')
+    saw_change = true
+
+    process.nextTick(function() { feed.stop() })
+    feed.on('stop', function() {
+      // Test using since=-1 (AKA since="now").
+      follow({'db':couch.DB, since:'now'}, function(er, change) {
+        t.equal(change.seq, 4, 'Only get changes made after starting the feed')
+        t.equal(change.id, "You're in now, now", 'Got the subsequent change')
+
+        this.stop()
+        t.end()
+      })
+
+      // Let that follower settle in, then send it something
+      setTimeout(function() {
+        var doc = { _id:"You're in now, now", movie:"Spaceballs" }
+        request.post({uri:couch.DB, json:doc}, function(er) {
+          if(er) throw er
+        })
+      }, couch.rtt())
+    })
+  })
+})
+
+couch.setup(test) // Back to the expected documents
+
 test('Issue #6', function(t) {
   // When we see change 1, delete the database. The rest should still come in, then the error indicating deletion.
   var saw = { seqs:{}, redid:false, redo_err:null }
