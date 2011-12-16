@@ -5,8 +5,10 @@ var tap = require('tap')
   , traceback = require('traceback')
 
 var lib = require('../lib')
+  , couch = require('./couch')
   , follow = require('../api')
-  , DB = process.env.db || 'http://localhost:5984/follow_test'
+
+couch.setup(test)
 
 test('Issue #8', function(t) {
   var timeouts = timeout_tracker()
@@ -23,7 +25,7 @@ test('Issue #8', function(t) {
     return clearTimeout.apply(this, arguments)
   }
 
-  follow(DB, function(er, change) {
+  follow(couch.DB, function(er, change) {
     t.false(er, 'Got a feed')
     t.equal(change.seq, 1, 'Handler only runs for one change')
 
@@ -51,7 +53,7 @@ test('Issue #8', function(t) {
 test('Issue #9', function(t) {
   var timeouts = timeout_tracker()
 
-  follow({db:DB, inactivity_ms:30000}, function(er, change) {
+  follow({db:couch.DB, inactivity_ms:30000}, function(er, change) {
     if(change.seq == 1)
       return // Let it run through once, just for fun.
 
