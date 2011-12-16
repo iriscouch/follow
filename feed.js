@@ -372,7 +372,7 @@ Feed.prototype.on_couch_data = function on_couch_data(data, req) {
       // might call .stop(), which means among other things that no more events are desired.
       // The die() code sets a self.dead flag to indicate this.
       if(self.dead)
-        self.log.info('Dead feed skipping change ' + seq)
+        self.log.debug('Dead feed skipping change ' + seq)
       else
         self.on_change(change);
     }
@@ -382,7 +382,7 @@ Feed.prototype.on_couch_data = function on_couch_data(data, req) {
 
   // Once again, on_change() may have been called, triggering a .die() call.
   if(self.dead)
-    self.log.info('Dead feed skipping wait')
+    self.log.debug('Dead feed skipping wait')
   else
     self.wait();
 }
