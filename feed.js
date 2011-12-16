@@ -363,6 +363,10 @@ Feed.prototype.on_couch_data = function on_couch_data(data, req) {
       }
 
       //self.log.debug('Object:\n' + util.inspect(change));
+      if('last_seq' in change) {
+        self.log.warn('Stopping upon receiving a final message: ' + json)
+        return self.stop(change.last_seq)
+      }
 
       seq = change.seq;
       if(!seq)
