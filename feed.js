@@ -438,11 +438,12 @@ Feed.prototype.on_couch_error = function on_couch_error(er) {
   return self.retry();
 }
 
-Feed.prototype.stop = function() {
+Feed.prototype.stop = function(val) {
   var self = this
 
-  // Just call die, no ability to pass Error objects.
-  return self.die()
+  // Die with no errors.
+  self.die()
+  self.emit('stop', val);
 }
 
 Feed.prototype.die = function(er) {
@@ -467,7 +468,6 @@ Feed.prototype.die = function(er) {
     destroy_req(req);
   }
 
-  self.emit('stop', er);
   if(er)
     self.emit('error', er);
 }
