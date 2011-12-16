@@ -111,6 +111,7 @@ feed.follow();
 Follow is happy to retry over and over, for all eternity. It will only emit an error if it thinks your whole application might be in trouble.
 
 * *DB confirmation* failed: Follow confirms the DB with a preliminary query, which must reply properly.
+* *DB is deleted*: Even if it retried, subsequent sequence numbers would be meaningless to your code.
 * *Your inactivity timer* expired: This is a last-ditch way to detect possible errors. What if couch is sending heartbeats just fine, but nothing has changed for 24 hours? You know that for your app, 24 hours with no change is impossible. Maybe your filter has a bug? Maybe you queried the wrong DB? Whatever the reason, Follow will emit an error.
 * JSON parse error, which should be impossible from CouchDB
 * Invalid change object format, which should be impossible from CouchDB

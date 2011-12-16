@@ -10,6 +10,40 @@ var lib = require('../lib')
 
 couch.setup(test)
 
+test('Issue #6', function(t) {
+  // When we see change 1, delete the database. The rest should still come in, then the error indicating deletion.
+  var saw = { seqs:{}, redid:false, redo_err:null }
+
+  follow(couch.DB, function(er, change) {
+    if(!er) {
+      saw.seqs[change.seq] = true
+      t.notOk(change.last_seq, 'Change '+change.seq+' ha no .last_seq')
+      if(change.seq == 1) {
+        couch.redo(function(er) {
+          saw.redid = true
+          saw.redo_err = er
+        })
+      }
+    }
+
+    else setTimeout(function() {
+      // Give the redo time to finish, then confirm that everything happened as expected.
+      // Hopefully this error indicates the database was deleted.
+      t.ok(er.message.match(/deleted .* 3$/), 'Got delete error after change 3')
+      t.ok(er.deleted, 'Error object indicates database deletion')
+      t.equal(er.last_seq, 3, 'Error object indicates the last change number')
+
+      t.ok(saw.seqs[1], 'Change 1 was processed')
+      t.ok(saw.seqs[2], 'Change 2 was processed')
+      t.ok(saw.seqs[3], 'Change 3 was processed')
+      t.ok(saw.redid, 'The redo function ran')
+      t.false(saw.redo_err, 'No problem redoing the database')
+
+      return t.end()
+    }, couch.rtt() * 2)
+  })
+})
+
 test('Issue #8', function(t) {
   var timeouts = timeout_tracker()
 

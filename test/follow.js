@@ -63,21 +63,20 @@ test("Confirmation request behavior", function(t) {
 
 test('Handle a deleted database', function(t) {
   var feed = follow(couch.DB, function(er, change) {
+    if(er)
+      return t.equal(er.last_seq, 3, 'Got an error for the deletion event')
+
     if(change.seq < 3)
       return
 
     t.equal(change.seq, 3, 'Got change number 3')
 
-    var last_seq, redo_er
-
-    feed.on('stop', function(val) { last_seq = val })
+    var redo_er
     couch.redo(function(er) { redo_er = er })
 
     setTimeout(check_results, couch.rtt() * 2)
     function check_results() {
       t.false(er, 'No problem redoing the couch')
-      t.equal(last_seq, 3, 'Got the last_seq value from the feed')
-
       t.end()
     }
   })
