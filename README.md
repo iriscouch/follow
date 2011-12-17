@@ -149,9 +149,9 @@ Follow uses [node-tap][tap]. If you clone this Git repository, tap is included.
 
     $ ./node_modules/.bin/tap test
     ok test/couch.js ...................................... 10/10
-    ok test/follow.js ..................................... 30/30
-    ok test/issues.js ..................................... 29/29
-    total ................................................. 72/72
+    ok test/follow.js ..................................... 38/38
+    ok test/issues.js ..................................... 43/43
+    total ................................................. 94/94
 
     ok
 
