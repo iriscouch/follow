@@ -53,6 +53,7 @@ follow({db:"https://example.iriscouch.com/boogie", include_docs:true}, function(
 })
 ```
 
+<a name="options"></a>
 All of the CouchDB _changes options are allowed. See http://guide.couchdb.org/draft/notifications.html.
 
 * `db` | Fully-qualified URL of a couch database. (Basic auth URLs are ok.)
@@ -106,6 +107,7 @@ feed.on('error', function(er) {
 feed.follow();
 ```
 
+<a name="events"></a>
 ## Events
 
 The feed object is an EventEmitter. There are a few ways to get a feed object:
