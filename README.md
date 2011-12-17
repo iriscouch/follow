@@ -106,6 +106,30 @@ feed.on('error', function(er) {
 feed.follow();
 ```
 
+## Events
+
+The feed object is an EventEmitter. There are a few ways to get a feed object:
+
+* Use the object API above
+* Use the return value of `follow()`
+* In the callback to `follow()`, the *this* variable is bound to the feed object.
+
+Once you've got one, you can subscribe to these events:
+
+* **start** | Before any i/o occurs
+* **confirm_request** | `function(req)` | The database confirmation request is sent; passed the `request` object
+* **confirm** | `function(db_obj)` | The database is confirmed; passed the couch database object
+* **change** | `function(change)` | A change occured; passed the change object from CouchDB
+* **catchup** | `function(seq_id)` | The feed has reached the latest change the database had when it was confirmed (i.e. its `update_seq`). Assuming no changes since the confirmation step, this means you have seen the entire database.
+* **wait** | Follow is idle, waiting for the next data chunk from CouchDB
+* **timeout** | `function(info)` | Follow did not receive a heartbeat from couch in time. The passed object has `.elapsed_ms` set to the elapsed time
+* **retry** | `function(info)` | A retry is scheduled (usually after a timeout or disconnection). The passed object has
+  * `.since` the current sequence id
+  * `.after` the milliseconds to wait before the request occurs (on an exponential fallback schedule)
+  * `.db` the database url (scrubbed of basic auth credentials)
+* **stop** | The feed is stopping, because of an error, or because you called `feed.stop()`
+* **error** | `function(err)` | An error occurs
+
 ## Error conditions
 
 Follow is happy to retry over and over, for all eternity. It will only emit an error if it thinks your whole application might be in trouble.
