@@ -61,6 +61,29 @@ test("Confirmation request behavior", function(t) {
   }
 })
 
+test('Events for DB confirmation and hitting the original seq', function(t) {
+  var feed = follow(couch.DB, on_change)
+
+  var events = { 'confirm':null, 'catchup':null }
+  feed.on('confirm', function(db) { events.confirm = db })
+  feed.on('catchup', function(seq) { events.catchup = seq })
+
+  function on_change(er, ch) {
+    t.false(er, 'No problem with the feed')
+    if(ch.seq == 3) {
+      t.ok(events.confirm, 'Confirm event fired')
+      t.equal(events.confirm && events.confirm.db_name, 'follow_test', 'Confirm event returned the Couch DB object')
+      t.equal(events.confirm && events.confirm.update_seq, 3, 'Confirm event got the update_seq right')
+
+      t.ok(events.catchup, 'Catchup event fired')
+      t.equal(events.catchup, 3, 'Catchup event fired on update 3')
+
+      feed.stop()
+      t.end()
+    }
+  }
+})
+
 test('Handle a deleted database', function(t) {
   var feed = follow(couch.DB, function(er, change) {
     if(er)

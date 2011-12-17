@@ -46,6 +46,7 @@ function Feed (opts) {
   self.request = {}; // Extra options for potentially future versions of request. The caller can supply them.
 
   self.since = 0;
+  self.caught_up = false
   self.retry_delay = INITIAL_RETRY_DELAY; // ms
 
   self.query_params = {}; // Extra `req.query` values for filter functions
@@ -132,7 +133,9 @@ Feed.prototype.confirm = function confirm_feed() {
     if(!db.db_name || !db.instance_start_time)
       return self.emit('error', new Error('Bad DB response: ' + body));
 
+    self.original_db_seq = db.update_seq
     self.log.debug('Confirmed db: ' + self.db_safe);
+    self.emit('confirm', db);
 
     if(self.since == 'now') {
       self.log.debug('Query since "now" is the same as query since -1')
@@ -144,7 +147,12 @@ Feed.prototype.confirm = function confirm_feed() {
       self.since = db.update_seq + self.since + 1
     }
 
-    self.emit('confirm');
+    // If the next change would come after the current update_seq, just fake a catchup event now.
+    if(self.original_db_seq == self.since) {
+      self.caught_up = true
+      self.emit('catchup', db.update_seq)
+    }
+
     return self.query();
   }
 }
@@ -493,6 +501,11 @@ Feed.prototype.on_change = function on_change(change) {
   if(change.seq <= self.since) {
     self.log.debug('Bad seq value ' + change.seq + ' since=' + self.since);
     return destroy_req(self.pending.request);
+  }
+
+  if(!self.caught_up && change.seq >= self.original_db_seq) {
+    self.caught_up = true
+    self.emit('catchup', change.seq)
   }
 
   if(typeof self.filter !== 'function')
