@@ -14,7 +14,7 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-var feed = require('./feed');
+var feed = require('./lib/feed');
 
 function follow_feed(opts, cb) {
   var ch_feed = new feed.Feed(opts);
