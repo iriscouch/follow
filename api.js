@@ -14,7 +14,8 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-var feed = require('./lib/feed');
+var feed = require('./lib/feed')
+  , stream = require('./lib/stream')
 
 function follow_feed(opts, cb) {
   var ch_feed = new feed.Feed(opts);
@@ -31,3 +32,4 @@ function follow_feed(opts, cb) {
 
 module.exports = follow_feed;
 module.exports.Feed = feed.Feed;
+module.exports.Changes = stream.Changes
