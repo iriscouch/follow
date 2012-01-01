@@ -46,10 +46,10 @@ test('Error conditions', function(t) {
   feed.feed = 'neither longpoll nor continuous'
   t.throws(write, 'Throw if the feed type is not longpoll nor continuous')
 
-  feed = new follow.Changes({'feed':'continuous'})
+  feed = new follow.Changes({'feed':'longpoll'})
   t.throws(write('stuff'), 'Throw if the "results" line is not sent first')
 
-  feed = new follow.Changes({'feed':'continuous'})
+  feed = new follow.Changes({'feed':'longpoll'})
   t.doesNotThrow(write('')    , 'Empty string is fine waiting for "results"')
   t.doesNotThrow(write('{')   , 'This could be the "results" line')
   t.doesNotThrow(write('"resu', 'Another part of the "results" line'))
