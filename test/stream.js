@@ -37,3 +37,16 @@ test('Writatable Stream API', function(t) {
 
   t.end()
 })
+
+test('Error conditions', function(t) {
+  var feed = new follow.Changes
+
+  function write() { feed.write('blah') }
+
+  t.throws(write, 'Throw if the feed type is not defined')
+
+  feed.feed = 'neither longpoll nor continuous'
+  t.throws(write, 'Throw if the feed type is not longpoll nor continuous')
+
+  t.end()
+})
