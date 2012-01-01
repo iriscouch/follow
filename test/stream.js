@@ -41,12 +41,27 @@ test('Writatable Stream API', function(t) {
 test('Error conditions', function(t) {
   var feed = new follow.Changes
 
-  function write() { feed.write('blah') }
-
   t.throws(write, 'Throw if the feed type is not defined')
 
   feed.feed = 'neither longpoll nor continuous'
   t.throws(write, 'Throw if the feed type is not longpoll nor continuous')
 
+  feed = new follow.Changes({'feed':'continuous'})
+  t.throws(write('stuff'), 'Throw if the "results" line is not sent first')
+
+  feed = new follow.Changes({'feed':'continuous'})
+  t.doesNotThrow(write('')    , 'Empty string is fine waiting for "results"')
+  t.doesNotThrow(write('{')   , 'This could be the "results" line')
+  t.doesNotThrow(write('"resu', 'Another part of the "results" line'))
+  t.doesNotThrow(write('')    , 'Another empty string is still fine')
+  t.doesNotThrow(write('lts":', 'Final part of "results" line still good'))
+  t.throws(write(']'), 'First line was not {"results":[')
+
   t.end()
+
+  function write(data) {
+    if(data === undefined)
+      return feed.write('blah')
+    return function() { feed.write(data) }
+  }
 })
