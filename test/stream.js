@@ -70,13 +70,13 @@ test('Error conditions', function(t) {
   feed = new follow.Changes
   feed.feed = 'continuous'
   t.doesNotThrow(write(''), 'Empty string is fine for a continuous feed')
-  t.throws(end('{"results":['), 'Continuous stream does not want a header')
+  t.throws(end('{"results":[\n'), 'Continuous stream does not want a header')
 
   feed = new follow.Changes({'feed':'continuous'})
   t.throws(write('hi\n'), 'Continuous stream wants objects')
 
   feed = new follow.Changes({'feed':'continuous'})
-  t.throws(end('[]'), 'Continuous stream wants "real" objects, not Array')
+  t.throws(end('[]\n'), 'Continuous stream wants "real" objects, not Array')
 
   feed = new follow.Changes({'feed':'continuous'})
   t.throws(write('{"seq":1,"id":"hi","changes":[{"rev":"1-869df2efe56ff5228e613ceb4d561b35"}]},\n'),
