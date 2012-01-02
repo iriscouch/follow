@@ -184,6 +184,9 @@ test('Continuous feed', function(t) {
     feed.on('data', function(d) { data.push(d) })
     feed.on('end', function() { data.push('END') })
 
+    var beats = 0
+    feed.on('heartbeat', function() { beats += 1 })
+
     function encode(data) { return (i == 0) ? data : new Buffer(data) }
     function write(data) { return function() { feed.write(encode(data)) } }
     function end(data) { return function() { feed.end(encode(data)) } }
@@ -194,20 +197,22 @@ test('Continuous feed', function(t) {
     t.doesNotThrow(write('{ "foo" : "bar" }\n')        , 'One object')
     t.doesNotThrow(write('{"three":3}\n{ "four": 4}\n'), 'Two objects sent in one chunk')
     t.doesNotThrow(write('')                           , 'Empty string')
+    t.doesNotThrow(write('\n')                         , 'Another heartbeat')
     t.doesNotThrow(write('')                           , 'Another empty string')
     t.doesNotThrow(write('{   "end"  ')                , 'Partial object 1/4')
     t.doesNotThrow(write(':')                          , 'Partial object 2/4')
     t.doesNotThrow(write('tru')                        , 'Partial object 3/4')
     t.doesNotThrow(end('e}\n')                         , 'Partial object 4/4')
 
-    t.equal(data.length, 6 + 1, 'Five objects emitted, plus a heartbeat, plus the end event')
+    t.equal(data.length, 6, 'Five objects emitted, plus the end event')
+    t.equal(beats, 2, 'Two heartbeats emitted')
+
     t.equal(data[0], '{}', 'First object emitted')
-    t.equal(data[1], '', 'Heartbeat after first object')
-    t.equal(data[2], '{"foo":"bar"}', 'Second object emitted')
-    t.equal(data[3], '{"three":3}', 'Third object emitted')
-    t.equal(data[4], '{"four":4}', 'Fourth object emitted')
-    t.equal(data[5], '{"end":true}', 'Fifth object emitted')
-    t.equal(data[6], 'END', 'End event fired')
+    t.equal(data[1], '{"foo":"bar"}', 'Second object emitted')
+    t.equal(data[2], '{"three":3}', 'Third object emitted')
+    t.equal(data[3], '{"four":4}', 'Fourth object emitted')
+    t.equal(data[4], '{"end":true}', 'Fifth object emitted')
+    t.equal(data[5], 'END', 'End event fired')
   }
 
   t.end()
@@ -330,5 +335,4 @@ test('Feeds from couch', function(t) {
   })
 })
 
-// TODO: No heartbeat data events. Just fire a heartbeat event.
 // TODO: See if I can get request to copy the headers to me, and statusCode, etc. (see main.js line 397)
