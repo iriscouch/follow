@@ -91,3 +91,42 @@ test('Longpoll feed', function(t) {
 
   t.end()
 })
+
+test('Longpoll pause', function(t) {
+  var feed = new follow.Changes({'feed':'longpoll'})
+    , all = {'results':[{'change':1}, {'second':'change'},{'change':'#3'}], 'last_seq':3}
+    , start = new Date
+
+  var events = []
+
+  feed.on('data', function(change) {
+    change = JSON.parse(change)
+    change.elapsed = new Date - start
+    events.push(change)
+  })
+
+  feed.once('data', function(data) {
+    t.equal(data, '{"change":1}', 'First data event was the first change')
+    feed.pause()
+    setTimeout(function() { feed.resume() }, 100)
+  })
+
+  feed.on('end', function() {
+    t.equal(feed.readable, false, 'Feed is no longer readable')
+    events.push('END')
+  })
+
+  setTimeout(check_events, 150)
+  feed.end(JSON.stringify(all))
+
+  function check_events() {
+    t.equal(events.length, 3+1, 'Three data events, plus the end event')
+
+    t.ok(events[0].elapsed < 10, 'Immediate emit first data event')
+    t.ok(events[1].elapsed >= 100 && events[1].elapsed < 125, 'About 100ms delay until the second event')
+    t.ok(events[2].elapsed - events[1].elapsed < 10, 'Immediate emit of subsequent event after resume')
+    t.equal(events[3], 'END', 'End event was fired')
+
+    t.end()
+  }
+})
