@@ -287,7 +287,7 @@ test('Feeds from couch', function(t) {
 
     // Disconnect the continuous feed after a while.
     if(type == 'continuous')
-      setTimeout(function() { req.response.destroy() }, couch.rtt() * 1)
+      setTimeout(function() { feed.destroy() }, couch.rtt() * 1)
 
     function on_response(er, res, body) {
       t.false(er, 'No problem fetching '+type+' feed: ' + uri)
@@ -299,7 +299,11 @@ test('Feeds from couch', function(t) {
     }
 
     function check_changes() {
-      t.equal(events.length, 4, 'Three '+type+' change events plus an end event')
+      var expected_count = 3
+      if(type == 'longpoll')
+        expected_count += 1 // For the "end" event
+
+      t.equal(events.length, expected_count, 'Change event count for ' + type)
 
       t.equal(events[0].seq, 1, 'First '+type+' update sequence id')
       t.equal(events[1].seq, 2, 'Second '+type+' update sequence id')
@@ -309,7 +313,10 @@ test('Feeds from couch', function(t) {
       t.equal(good_id(events[1]), true, 'Second '+type+' update is a good doc id: ' + events[1].id)
       t.equal(good_id(events[2]), true, 'Third '+type+' update is a good doc id: ' + events[2].id)
 
-      t.equal(events[3], 'END', 'End event fired for '+type)
+      if(type == 'longpoll')
+        t.equal(events[3], 'END', 'End event fired for '+type)
+      else
+        t.type(events[3], 'undefined', 'No end event for a destroyed continuous feed')
 
       done()
     }
