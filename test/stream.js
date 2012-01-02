@@ -71,16 +71,40 @@ test('Error conditions', function(t) {
   t.throws(write('{"seq":1,"id":"hi","changes":[{"rev":"1-869df2efe56ff5228e613ceb4d561b35"}]},\n'),
            'Continuous stream does not want a comma')
 
+  var types = ['longpoll', 'continuous']
+  types.forEach(function(type) {
+    var bad_writes = [ {}, null, ['a string (array)'], {'an':'object'}]
+    bad_writes.forEach(function(obj) {
+      feed = new follow.Changes
+      feed.feed = type
+
+      t.throws(write(obj), 'Throw for bad write to '+type+': ' + util.inspect(obj))
+    })
+
+    feed = new follow.Changes
+    feed.feed = type
+
+    var valid = (type == 'longpoll')
+                  ? '{"results":[\n{}\n],\n"last_seq":1}'
+                  : '{"seq":1,"id":"doc"}'
+
+    t.throws(buf(valid, 'but_invalid_encoding'), 'Throw for buffer with bad encoding')
+  })
+
   t.end()
 
-  function write(data) {
-    if(data === undefined)
-      return feed.write('blah')
-    return function() { feed.write(data) }
+  function buf(data, encoding) {
+    return write(new Buffer(data), encoding)
   }
 
-  function end(data) {
-    return function() { feed.end(data) }
+  function write(data, encoding) {
+    if(data === undefined)
+      return feed.write('blah')
+    return function() { feed.write(data, encoding) }
+  }
+
+  function end(data, encoding) {
+    return function() { feed.end(data, encoding) }
   }
 })
 
