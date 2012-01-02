@@ -262,3 +262,66 @@ test('Continuous pause', function(t) {
     t.end()
   }
 })
+
+test('Feeds from couch', function(t) {
+  t.ok(couch.rtt(), 'RTT to couch is known')
+
+  var did = 0
+  function done() {
+    did += 1
+    if(did == 2)
+      t.end()
+  }
+
+  var types = [ 'longpoll', 'continuous' ]
+  types.forEach(function(type) {
+    var feed = new follow.Changes({'feed':type})
+    setTimeout(check_changes, couch.rtt() * 2)
+
+    var events = []
+    feed.on('data', function(data) { events.push(JSON.parse(data)) })
+    feed.on('end', function() { events.push('END') })
+
+    var uri = couch.DB + '/_changes?feed=' + type
+    var req = request({'uri':uri, 'onResponse':true}, on_response)
+
+    // Disconnect the continuous feed after a while.
+    if(type == 'continuous')
+      setTimeout(function() { req.response.destroy() }, couch.rtt() * 1)
+
+    function on_response(er, res, body) {
+      t.false(er, 'No problem fetching '+type+' feed: ' + uri)
+      t.type(body, 'undefined', 'No data in '+type+' callback. This is an onResponse callback')
+      t.type(res.body, 'undefined', 'No response body in '+type+' callback. This is an onResponse callback')
+      t.ok(req.response, 'The request object has its '+type+' response by now')
+
+      req.pipe(feed)
+    }
+
+    function check_changes() {
+      t.equal(events.length, 4, 'Three '+type+' change events plus an end event')
+
+      t.equal(events[0].seq, 1, 'First '+type+' update sequence id')
+      t.equal(events[1].seq, 2, 'Second '+type+' update sequence id')
+      t.equal(events[2].seq, 3, 'Third '+type+' update sequence id')
+
+      t.equal(good_id(events[0]), true, 'First '+type+' update is a good doc id: ' + events[0].id)
+      t.equal(good_id(events[1]), true, 'Second '+type+' update is a good doc id: ' + events[1].id)
+      t.equal(good_id(events[2]), true, 'Third '+type+' update is a good doc id: ' + events[2].id)
+
+      t.equal(events[3], 'END', 'End event fired for '+type)
+
+      done()
+    }
+
+    var good_ids = {'doc_first':true, 'doc_second':true, 'doc_third':true}
+    function good_id(event) {
+      var is_good = good_ids[event.id]
+      delete good_ids[event.id]
+      return is_good
+    }
+  })
+})
+
+// TODO: No heartbeat data events. Just fire a heartbeat event.
+// TODO: See if I can get request to copy the headers to me, and statusCode, etc. (see main.js line 397)
