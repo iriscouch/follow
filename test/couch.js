@@ -16,6 +16,7 @@ module.exports = { 'DB': DB
                  , 'rtt' : get_rtt
                  , 'redo': redo_couch
                  , 'setup': setup_test
+                 , 'make_data': make_data
                  }
 
 
@@ -83,6 +84,70 @@ function init_db(t, callback) {
     })
   })
 }
+
+
+function make_data(minimum_size, callback) {
+  var payload = {'docs':[]}
+    , size = 0
+
+  // TODO: Make document number 20 really large, at least over 9kb.
+  while(size < minimum_size) {
+    var doc = {}
+      , key_count = rndint(0, 25)
+
+    while(key_count-- > 0)
+      doc[rndstr(8)] = rndstr(20)
+
+    // The 20th document has one really large string value.
+    if(payload.docs.length == 19) {
+      var big_str = rndstr(9000, 15000)
+      doc.big = {'length':big_str.length, 'value':big_str}
+    }
+
+    size += JSON.stringify(doc).length // This is an underestimate because an _id and _rev will be added.
+    payload.docs.push(doc)
+  }
+
+  request.post({'uri':DB+'/_bulk_docs', 'json':payload}, function(er, res) {
+    if(er) throw er
+
+    if(res.statusCode != 201)
+      throw new Error('Bad bulk_docs update: ' + util.inspect(res.body))
+
+    if(res.body.length != payload.docs.length)
+      throw new Error('Should have results for '+payload.docs.length+' doc insertions')
+
+    if(res.body.length < 1500)
+      throw new Error('Seems like at least 1,500 docs should have been added: ' + res.body.length)
+
+    res.body.forEach(function(result) {
+      if(!result || !result.id || !result.rev)
+        throw new Error('Bad bulk_docs response: ' + util.inspect(result))
+    })
+
+    return callback(payload.docs.length)
+  })
+
+  function rndstr(minlen, maxlen) {
+    if(!maxlen) {
+      maxlen = minlen
+      minlen = 1
+    }
+
+    var str = ""
+      , length = rndint(minlen, maxlen)
+
+    while(length-- > 0)
+      str += String.fromCharCode(rndint(97, 122))
+
+    return str
+  }
+
+  function rndint(min, max) {
+    return min + Math.floor(Math.random() * (max - min + 1))
+  }
+}
+
 
 if(require.main === module)
   setup_test(tap.test)
