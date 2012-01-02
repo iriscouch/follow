@@ -348,3 +348,147 @@ test('Feeds from couch', function(t) {
     }
   })
 })
+
+test('Pausing and destroying a feed mid-stream', function(t) {
+  t.ok(couch.rtt(), 'RTT to couch is known')
+  var IMMEDIATE = 20
+    , FIRST_PAUSE = couch.rtt() * 8
+    , SECOND_PAUSE = couch.rtt() * 12
+
+  // To be really, really sure that backpressure goes all the way to couch, create more
+  // documents than could possibly be buffered. Linux and OSX seem to have a 16k MTU for
+  // the local interface, so a few hundred kb worth of document data should cover it.
+  couch.make_data(512 * 1024, check)
+
+  var types = ['longpoll', 'continuous']
+  function check(bulk_docs_count) {
+    var type = types.shift()
+    if(!type)
+      return t.end()
+
+    var feed = new follow.Changes
+    feed.feed = type
+
+    var destroys = 0
+    function destroy() {
+      destroys += 1
+      feed.destroy()
+
+      // Give one more RTT time for everything to wind down before checking how it all went.
+      if(destroys == 1)
+        setTimeout(check_events, couch.rtt())
+    }
+
+    var events = {'feed':[], 'http':[], 'request':[]}
+      , firsts = {'feed':null, 'http':null, 'request':null}
+    function ev(type, value) {
+      var now = new Date
+      firsts[type] = firsts[type] || now
+      events[type].push({'elapsed':now - firsts[type], 'at':now, 'val':value, 'before_destroy':(destroys == 0)})
+    }
+
+    feed.on('heartbeat', function() { ev('feed', 'heartbeat') })
+    feed.on('error', function(er) { ev('feed', er) })
+    feed.on('close', function() { ev('feed', 'close') })
+    feed.on('data', function(data) { ev('feed', data) })
+    feed.on('end', function() { ev('feed', 'end') })
+
+    var data_count = 0
+    feed.on('data', function() {
+      data_count += 1
+      if(data_count == 4) {
+        feed.pause()
+        setTimeout(function() { feed.resume() }, FIRST_PAUSE)
+      }
+
+      if(data_count == 7) {
+        feed.pause()
+        setTimeout(function() { feed.resume() }, SECOND_PAUSE - FIRST_PAUSE)
+      }
+
+      if(data_count >= 10)
+        destroy()
+    })
+
+    var uri = couch.DB + '/_changes?include_docs=true&feed=' + type
+    if(type == 'continuous')
+      uri += '&heartbeat=' + Math.floor(couch.rtt())
+
+    var req = request({'uri':uri, 'onResponse':true}, function(er, res) {
+      if(er) throw er
+
+      res.setEncoding('utf8')
+      res.on('error', function(er) { ev('http', er) })
+      res.on('close', function() { ev('http', 'close') })
+      res.on('data', function(d) { ev('http', d) })
+      res.on('end', function() { ev('http', 'end') })
+
+      t.equal(events.feed.length, 0, 'No feed events yet: ' + type)
+      t.equal(events.http.length, 0, 'No http events yet: ' + type)
+      t.equal(events.request.length, 0, 'No request events yet: ' + type)
+
+      req.on('error', function(er) { ev('request', er) })
+      req.on('close', function() { ev('request', 'close') })
+      req.on('data', function(d) { ev('request', d) })
+      req.on('end', function() { ev('request', 'end') })
+
+      req.pipe(feed)
+    })
+
+    function check_events() {
+      t.equal(destroys, 1, 'Only necessary to call destroy once: ' + type)
+      t.equal(events.feed.length, 10, 'Ten '+type+' data events fired')
+      if(events.feed.length != 10)
+        events.feed.forEach(function(e, i) {
+          console.error((i+1) + ') ' + util.inspect(e))
+        })
+
+      events.feed.forEach(function(event, i) {
+        var label = type + ' event #' + (i+1) + ' at ' + event.elapsed + ' ms'
+
+        t.type(event.val, 'string', label+' was a data string')
+        t.equal(event.before_destroy, true, label+' fired before the destroy')
+
+        var change = null
+        t.doesNotThrow(function() { change = JSON.parse(event.val) }, label+' was JSON: ' + type)
+        t.ok(change && change.seq > 0 && change.id, label+' was change data: ' + type)
+
+        // The first batch of events should have fired quickly (IMMEDIATE), then silence. Then another batch
+        // of events at the FIRST_PAUSE mark. Then more silence. Then a final batch at the SECOND_PAUSE mark.
+        if(i < 4)
+          t.ok(event.elapsed < IMMEDIATE, label+' was immediate (within '+IMMEDIATE+' ms)')
+        else if(i < 7)
+          t.ok(is_almost(event.elapsed, FIRST_PAUSE), label+' was after the first pause (about '+FIRST_PAUSE+' ms)')
+        else
+          t.ok(is_almost(event.elapsed, SECOND_PAUSE), label+' was after the second pause (about '+SECOND_PAUSE+' ms)')
+      })
+
+      if(type == 'continuous') {
+        t.ok(events.http.length >= 10, 'Should have at least ten '+type+' HTTP events')
+        t.ok(events.request.length >= 10, 'Should have at least ten '+type+' request events')
+
+        t.ok(events.http.length < 100, type+' HTTP events ('+events.http.length+') stop before 100')
+        t.ok(events.request.length < 100, type+' request events ('+events.request.length+') stop before 100')
+
+        var frac = events.http.length / bulk_docs_count
+        t.ok(frac < 0.10, 'Percent of http events received ('+frac.toFixed(1)+'%) is less than 10% of the data')
+
+        frac = events.request.length / bulk_docs_count
+        t.ok(frac < 0.10, 'Percent of '+type+' request events received ('+frac.toFixed(1)+'%) is less than 10% of the data')
+      }
+
+      return check(bulk_docs_count)
+    }
+  }
+})
+
+//
+// Utilities
+//
+
+function is_almost(actual, expected) {
+  var tolerance = 0.10 // 10%
+    , diff = Math.abs(actual - expected)
+    , fraction = diff / expected
+  return fraction < tolerance
+}
