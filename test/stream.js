@@ -9,6 +9,17 @@ var couch = require('./couch')
 
 couch.setup(test)
 
+test('The Changes stream API', function(t) {
+  var feed = new follow.Changes
+
+  t.type(feed.statusCode, 'null', 'Changes has a .statusCode (initially null)')
+  t.type(feed.setHeader, 'function', 'Changes has a .setHeader() method')
+  t.type(feed.headers, 'object', 'Changes has a .headers object')
+  t.same(feed.headers, {}, 'Changes headers are initially empty')
+
+  t.end()
+})
+
 test('Readable Stream API', function(t) {
   var feed = new follow.Changes
 
@@ -301,6 +312,9 @@ test('Feeds from couch', function(t) {
       t.ok(req.response, 'The request object has its '+type+' response by now')
 
       req.pipe(feed)
+
+      t.equal(feed.statusCode, 200, 'Upon piping from request, the statusCode is set')
+      t.ok('content-type' in feed.headers, 'Upon piping from request, feed has headers set')
     }
 
     function check_changes() {
@@ -334,5 +348,3 @@ test('Feeds from couch', function(t) {
     }
   })
 })
-
-// TODO: See if I can get request to copy the headers to me, and statusCode, etc. (see main.js line 397)
