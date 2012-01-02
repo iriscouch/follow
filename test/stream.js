@@ -20,7 +20,6 @@ test('Readable Stream API', function(t) {
   t.type(feed.destroy, 'function', 'Changes has .destroy() method')
   t.type(feed.destroySoon, 'function', 'Changes has .destroySoon() method')
   t.type(feed.pipe, 'function', 'Changes has .pipe() method')
-  return t.end()
 
   t.end()
 })
@@ -40,9 +39,9 @@ test('Writatable Stream API', function(t) {
 
 test('Error conditions', function(t) {
   var feed = new follow.Changes
-
   t.throws(write, 'Throw if the feed type is not defined')
 
+  feed = new follow.Changes
   feed.feed = 'neither longpoll nor continuous'
   t.throws(write, 'Throw if the feed type is not longpoll nor continuous')
 
@@ -57,12 +56,31 @@ test('Error conditions', function(t) {
   t.doesNotThrow(write('lts":', 'Final part of "results" line still good'))
   t.throws(write(']'), 'First line was not {"results":[')
 
+  feed = new follow.Changes
+  feed.feed = 'continuous'
+  t.doesNotThrow(write(''), 'Empty string is fine for a continuous feed')
+  t.throws(end('{"results":['), 'Continuous stream does not want a header')
+
+  feed = new follow.Changes({'feed':'continuous'})
+  t.throws(write('hi\n'), 'Continuous stream wants objects')
+
+  feed = new follow.Changes({'feed':'continuous'})
+  t.throws(end('[]'), 'Continuous stream wants "real" objects, not Array')
+
+  feed = new follow.Changes({'feed':'continuous'})
+  t.throws(write('{"seq":1,"id":"hi","changes":[{"rev":"1-869df2efe56ff5228e613ceb4d561b35"}]},\n'),
+           'Continuous stream does not want a comma')
+
   t.end()
 
   function write(data) {
     if(data === undefined)
       return feed.write('blah')
     return function() { feed.write(data) }
+  }
+
+  function end(data) {
+    return function() { feed.end(data) }
   }
 })
 
