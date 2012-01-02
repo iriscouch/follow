@@ -182,3 +182,53 @@ test('Continuous feed', function(t) {
 
   t.end()
 })
+
+test('Continuous pause', function(t) {
+  var feed = new follow.Changes({'feed':'continuous'})
+    , all = [{'change':1}, {'second':'change'},{'#3':'change'}]
+    , start = new Date
+
+  var events = []
+
+  feed.on('end', function() {
+    t.equal(feed.readable, false, 'Feed is not readable after "end" event')
+    events.push('END')
+  })
+
+  feed.on('data', function(change) {
+    change = JSON.parse(change)
+    change.elapsed = new Date - start
+    events.push(change)
+  })
+
+  feed.once('data', function(data) {
+    t.equal(data, '{"change":1}', 'First data event was the first change')
+    t.equal(feed.readable, true, 'Feed is readable after first data event')
+    feed.pause()
+    t.equal(feed.readable, true, 'Feed is readable after pause()')
+
+    setTimeout(unpause, 100)
+    function unpause() {
+      t.equal(feed.readable, true, 'Feed is readable just before resume()')
+      feed.resume()
+    }
+  })
+
+  setTimeout(check_events, 150)
+  all.forEach(function(obj) {
+    feed.write(JSON.stringify(obj))
+    feed.write("\r\n")
+  })
+  feed.end()
+
+  function check_events() {
+    t.equal(events.length, 3+1, 'Three data events, plus the end event')
+
+    t.ok(events[0].elapsed < 10, 'Immediate emit first data event')
+    t.ok(events[1].elapsed >= 100 && events[1].elapsed < 125, 'About 100ms delay until the second event')
+    t.ok(events[2].elapsed - events[1].elapsed < 10, 'Immediate emit of subsequent event after resume')
+    t.equal(events[3], 'END', 'End event was fired')
+
+    t.end()
+  }
+})
