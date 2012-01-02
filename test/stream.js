@@ -109,27 +109,30 @@ test('Error conditions', function(t) {
 })
 
 test('Longpoll feed', function(t) {
-  var feed = new follow.Changes({'feed':'longpoll'})
+  for(var i = 0; i < 2; i++) {
+    var feed = new follow.Changes({'feed':'longpoll'})
 
-  var data = []
-  feed.on('data', function(d) { data.push(d) })
+    var data = []
+    feed.on('data', function(d) { data.push(d) })
 
-  function write(data) { return function() { feed.write(data) } }
-  function end(data) { return function() { feed.end(data) } }
+    function encode(data) { return (i == 0) ? data : new Buffer(data) }
+    function write(data) { return function() { feed.write(encode(data)) } }
+    function end(data) { return function() { feed.end(encode(data)) } }
 
-  t.doesNotThrow(write('{"results":[')           , 'Longpoll header')
-  t.doesNotThrow(write('{}')                     , 'Empty object')
-  t.doesNotThrow(write(',{"foo":"bar"},')        , 'Comma prefix and suffix')
-  t.doesNotThrow(write('{"two":"bar"},')         , 'Comma suffix')
-  t.doesNotThrow(write('{"three":3},{"four":4}'), 'Two objects on one line')
-  t.doesNotThrow(end('],\n"last_seq":3}\n')      , 'Longpoll footer')
+    t.doesNotThrow(write('{"results":[')           , 'Longpoll header')
+    t.doesNotThrow(write('{}')                     , 'Empty object')
+    t.doesNotThrow(write(',{"foo":"bar"},')        , 'Comma prefix and suffix')
+    t.doesNotThrow(write('{"two":"bar"},')         , 'Comma suffix')
+    t.doesNotThrow(write('{"three":3},{"four":4}'), 'Two objects on one line')
+    t.doesNotThrow(end('],\n"last_seq":3}\n')      , 'Longpoll footer')
 
-  t.equal(data.length, 5, 'Five data events fired')
-  t.equal(data[0], '{}', 'First object emitted')
-  t.equal(data[1], '{"foo":"bar"}', 'Second object emitted')
-  t.equal(data[2], '{"two":"bar"}', 'Third object emitted')
-  t.equal(data[3], '{"three":3}', 'Fourth object emitted')
-  t.equal(data[4], '{"four":4}', 'Fifth object emitted')
+    t.equal(data.length, 5, 'Five data events fired')
+    t.equal(data[0], '{}', 'First object emitted')
+    t.equal(data[1], '{"foo":"bar"}', 'Second object emitted')
+    t.equal(data[2], '{"two":"bar"}', 'Third object emitted')
+    t.equal(data[3], '{"three":3}', 'Fourth object emitted')
+    t.equal(data[4], '{"four":4}', 'Fifth object emitted')
+  }
 
   t.end()
 })
@@ -174,35 +177,38 @@ test('Longpoll pause', function(t) {
 })
 
 test('Continuous feed', function(t) {
-  var feed = new follow.Changes({'feed':'continuous'})
+  for(var i = 0; i < 2; i++) {
+    var feed = new follow.Changes({'feed':'continuous'})
 
-  var data = []
-  feed.on('data', function(d) { data.push(d) })
-  feed.on('end', function() { data.push('END') })
+    var data = []
+    feed.on('data', function(d) { data.push(d) })
+    feed.on('end', function() { data.push('END') })
 
-  function write(data) { return function() { feed.write(data) } }
-  function end(data) { return function() { feed.end(data) } }
+    function encode(data) { return (i == 0) ? data : new Buffer(data) }
+    function write(data) { return function() { feed.write(encode(data)) } }
+    function end(data) { return function() { feed.end(encode(data)) } }
 
-  // This also tests whether the feed is compacting or tightening up the JSON.
-  t.doesNotThrow(write('{    }\n')                   , 'Empty object')
-  t.doesNotThrow(write('\n')                         , 'Heartbeat')
-  t.doesNotThrow(write('{ "foo" : "bar" }\n')        , 'One object')
-  t.doesNotThrow(write('{"three":3}\n{ "four": 4}\n'), 'Two objects sent in one chunk')
-  t.doesNotThrow(write('')                           , 'Empty string')
-  t.doesNotThrow(write('')                           , 'Another empty string')
-  t.doesNotThrow(write('{   "end"  ')                , 'Partial object 1/4')
-  t.doesNotThrow(write(':')                          , 'Partial object 2/4')
-  t.doesNotThrow(write('tru')                        , 'Partial object 3/4')
-  t.doesNotThrow(end('e}\n')                         , 'Partial object 4/4')
+    // This also tests whether the feed is compacting or tightening up the JSON.
+    t.doesNotThrow(write('{    }\n')                   , 'Empty object')
+    t.doesNotThrow(write('\n')                         , 'Heartbeat')
+    t.doesNotThrow(write('{ "foo" : "bar" }\n')        , 'One object')
+    t.doesNotThrow(write('{"three":3}\n{ "four": 4}\n'), 'Two objects sent in one chunk')
+    t.doesNotThrow(write('')                           , 'Empty string')
+    t.doesNotThrow(write('')                           , 'Another empty string')
+    t.doesNotThrow(write('{   "end"  ')                , 'Partial object 1/4')
+    t.doesNotThrow(write(':')                          , 'Partial object 2/4')
+    t.doesNotThrow(write('tru')                        , 'Partial object 3/4')
+    t.doesNotThrow(end('e}\n')                         , 'Partial object 4/4')
 
-  t.equal(data.length, 6 + 1, 'Five objects emitted, plus a heartbeat, plus the end event')
-  t.equal(data[0], '{}', 'First object emitted')
-  t.equal(data[1], '', 'Heartbeat after first object')
-  t.equal(data[2], '{"foo":"bar"}', 'Second object emitted')
-  t.equal(data[3], '{"three":3}', 'Third object emitted')
-  t.equal(data[4], '{"four":4}', 'Fourth object emitted')
-  t.equal(data[5], '{"end":true}', 'Fifth object emitted')
-  t.equal(data[6], 'END', 'End event fired')
+    t.equal(data.length, 6 + 1, 'Five objects emitted, plus a heartbeat, plus the end event')
+    t.equal(data[0], '{}', 'First object emitted')
+    t.equal(data[1], '', 'Heartbeat after first object')
+    t.equal(data[2], '{"foo":"bar"}', 'Second object emitted')
+    t.equal(data[3], '{"three":3}', 'Third object emitted')
+    t.equal(data[4], '{"four":4}', 'Fourth object emitted')
+    t.equal(data[5], '{"end":true}', 'Fifth object emitted')
+    t.equal(data[6], 'END', 'End event fired')
+  }
 
   t.end()
 })
