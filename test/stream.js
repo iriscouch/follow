@@ -65,3 +65,29 @@ test('Error conditions', function(t) {
     return function() { feed.write(data) }
   }
 })
+
+test('Longpoll feed', function(t) {
+  var feed = new follow.Changes({'feed':'longpoll'})
+
+  var data = []
+  feed.on('data', function(d) { data.push(d) })
+
+  function write(data) { return function() { feed.write(data) } }
+  function end(data) { return function() { feed.end(data) } }
+
+  t.doesNotThrow(write('{"results":[')           , 'Longpoll header')
+  t.doesNotThrow(write('{}')                     , 'Empty object')
+  t.doesNotThrow(write(',{"foo":"bar"},')        , 'Comma prefix and suffix')
+  t.doesNotThrow(write('{"two":"bar"},')         , 'Comma suffix')
+  t.doesNotThrow(write('{"three":3},{"four":4}'), 'Two objects on one line')
+  t.doesNotThrow(end('],\n"last_seq":3}\n')      , 'Longpoll footer')
+
+  t.equal(data.length, 5, 'Five data events fired')
+  t.equal(data[0], '{}', 'First object emitted')
+  t.equal(data[1], '{"foo":"bar"}', 'Second object emitted')
+  t.equal(data[2], '{"two":"bar"}', 'Third object emitted')
+  t.equal(data[3], '{"three":3}', 'Fourth object emitted')
+  t.equal(data[4], '{"four":4}', 'Fifth object emitted')
+
+  t.end()
+})
