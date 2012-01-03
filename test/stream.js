@@ -414,10 +414,16 @@ test('Pausing and destroying a feed mid-stream', function(t) {
     if(type == 'continuous')
       uri += '&heartbeat=' + Math.floor(couch.rtt())
 
-    var req = request({'uri':uri, 'onResponse':true}, function(er, res) {
+    var req = request({'uri':uri, 'onResponse':feed_response})
+    req.on('error', function(er) { ev('request', er) })
+    req.on('close', function() { ev('request', 'close') })
+    req.on('data', function(d) { ev('request', d) })
+    req.on('end', function() { ev('request', 'end') })
+    req.pipe(feed)
+
+    function feed_response(er, res) {
       if(er) throw er
 
-      res.setEncoding('utf8')
       res.on('error', function(er) { ev('http', er) })
       res.on('close', function() { ev('http', 'close') })
       res.on('data', function(d) { ev('http', d) })
@@ -426,14 +432,7 @@ test('Pausing and destroying a feed mid-stream', function(t) {
       t.equal(events.feed.length, 0, 'No feed events yet: ' + type)
       t.equal(events.http.length, 0, 'No http events yet: ' + type)
       t.equal(events.request.length, 0, 'No request events yet: ' + type)
-
-      req.on('error', function(er) { ev('request', er) })
-      req.on('close', function() { ev('request', 'close') })
-      req.on('data', function(d) { ev('request', d) })
-      req.on('end', function() { ev('request', 'end') })
-
-      req.pipe(feed)
-    })
+    }
 
     function check_events() {
       t.equal(destroys, 1, 'Only necessary to call destroy once: ' + type)
