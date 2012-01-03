@@ -61,6 +61,36 @@ test("Confirmation request behavior", function(t) {
   }
 })
 
+test('Heartbeats', function(t) {
+  t.ok(couch.rtt(), 'The couch RTT is known')
+  var check_time = couch.rtt() * 3.5 // Enough time for 3 heartbeats.
+
+  var beats = 0
+    , retries = 0
+
+  var feed = follow(couch.DB, function() {})
+  feed.heartbeat = couch.rtt()
+  feed.on('response', function() { feed.retry_delay = 1 })
+
+  feed.on('heartbeat', function() { beats += 1 })
+  feed.on('retry', function() { retries += 1 })
+
+  feed.on('catchup', function() {
+    t.equal(beats, 0, 'Still 0 heartbeats after receiving changes')
+    t.equal(retries, 0, 'Still 0 retries after receiving changes')
+
+    //console.error('Waiting ' + couch.rtt() + ' * 3 = ' + check_time + ' to check stuff')
+    setTimeout(check_counters, check_time)
+    function check_counters() {
+      t.equal(beats, 3, 'Three heartbeats ('+couch.rtt()+') fired after '+check_time+' ms')
+      t.equal(retries, 0, 'No retries after '+check_time+' ms')
+
+      feed.stop()
+      t.end()
+    }
+  })
+})
+
 test('Events for DB confirmation and hitting the original seq', function(t) {
   var feed = follow(couch.DB, on_change)
 
