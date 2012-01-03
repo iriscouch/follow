@@ -467,8 +467,8 @@ test('Pausing and destroying a feed mid-stream', function(t) {
         t.ok(events.http.length >= 10, 'Should have at least ten '+type+' HTTP events')
         t.ok(events.request.length >= 10, 'Should have at least ten '+type+' request events')
 
-        t.ok(events.http.length < 100, type+' HTTP events ('+events.http.length+') stop before 100')
-        t.ok(events.request.length < 100, type+' request events ('+events.request.length+') stop before 100')
+        t.ok(events.http.length < 200, type+' HTTP events ('+events.http.length+') stop before 100')
+        t.ok(events.request.length < 200, type+' request events ('+events.request.length+') stop before 100')
 
         var frac = events.http.length / bulk_docs_count
         t.ok(frac < 0.10, 'Percent of http events received ('+frac.toFixed(1)+'%) is less than 10% of the data')
