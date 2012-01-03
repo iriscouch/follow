@@ -473,7 +473,7 @@ test('Pausing and destroying a feed mid-stream', function(t) {
         t.ok(frac < 0.10, 'Percent of http events received ('+frac.toFixed(1)+'%) is less than 10% of the data')
 
         frac = events.request.length / bulk_docs_count
-        t.ok(frac < 0.10, 'Percent of '+type+' request events received ('+frac.toFixed(1)+'%) is less than 10% of the data')
+        t.ok(frac < 0.10, type+' request events received ('+frac.toFixed(1)+'%) is less than 10% of the data')
       }
 
       return check(bulk_docs_count)
