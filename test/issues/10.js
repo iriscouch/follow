@@ -11,18 +11,14 @@ var lib = require('../../lib')
 
 couch.setup(test)
 
-test('Issue #9', function(t) {
+test('Issue #10', function(t) {
   follow({db:couch.DB, inactivity_ms:30000}, function(er, change) {
     console.error('Change: ' + JSON.stringify(change))
-    if(change.seq == 1)
-      return // Let it run through once, just for fun.
+    if(change.seq == 2)
+      this.stop()
 
-    //t.equal(change.seq, 2, 'The second change will be the last')
-    this.stop()
-
-    setTimeout(finish, 250)
-    function finish() {
+    this.on('stop', function() {
       t.end()
-    }
+    })
   })
 })
