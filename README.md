@@ -107,6 +107,28 @@ feed.on('error', function(er) {
 feed.follow();
 ```
 
+<a name="pause"></a>
+## Pause and Resume
+
+A Follow feed is a Node.js stream. If you get lots of changes and processing them takes a while, use `.pause()` and `.resume()` as needed. Pausing guarantees that no new events will fire. Resuming guarantees you'll pick up where you left off.
+
+```javascript
+follow("https://example.iriscouch.com/boogie", function(error, change) {
+  var feed = this
+
+  if(change.seq == 1) {
+    console.log('Uh oh. The first change takes 30 hours to process. Better pause.')
+    feed.pause()
+    setTimeout(function() { feed.resume() }, 30 * 60 * 60 * 1000)
+  }
+
+  // ... 30 hours with no events ...
+
+  else
+    console.log('No need to pause for normal change: ' + change.id)
+})
+```
+
 <a name="events"></a>
 ## Events
 
