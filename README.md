@@ -11,8 +11,9 @@ This looks much like the [request][req] API.
 ```javascript
 var follow = require('follow');
 follow("https://example.iriscouch.com/boogie", function(error, change) {
-  if(!error)
+  if(!error) {
     console.log("Got change number " + change.seq + ": " + change.id);
+  }
 })
 ```
 
