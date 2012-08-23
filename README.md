@@ -1,3 +1,4 @@
+[![build status](https://secure.travis-ci.org/iriscouch/follow.png)](http://travis-ci.org/iriscouch/follow)
 # Follow: CouchDB changes notifier for NodeJS
 
 Follow (upper-case *F*) comes from an internal Iris Couch project used in production for over a year. It works in the browser (beta) and is available as an NPM module.
