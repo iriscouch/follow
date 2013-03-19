@@ -375,7 +375,10 @@ test('Feeds from couch', function(t) {
     feed.on('end', function() { events.push('END') })
 
     var uri = couch.DB + '/_changes?feed=' + type
-    var req = request({'uri':uri, 'onResponse':true}, on_response)
+    var req = request({'uri':uri})
+
+    // Compatibility with the old onResponse option.
+    req.on('response', function(res) { on_response(null, res, res.body) })
 
     // Disconnect the continuous feed after a while.
     if(type == 'continuous')
@@ -490,7 +493,8 @@ test('Pausing and destroying a feed mid-stream', function(t) {
     if(type == 'continuous')
       uri += '&heartbeat=' + Math.floor(couch.rtt())
 
-    var req = request({'uri':uri, 'onResponse':feed_response})
+    var req = request({'uri':uri})
+    req.on('response', function(res) { feed_response(null, res, res.body) })
     req.on('error', function(er) { ev('request', er) })
     req.on('close', function() { ev('request', 'close') })
     req.on('data', function(d) { ev('request', d) })
