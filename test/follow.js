@@ -52,7 +52,8 @@ test("Confirmation request behavior", function(t) {
 
     // Confirm that the changes follower is not still in the pool.
     var host = 'localhost:5984'
-    follow_req.req.agent.sockets[host].forEach(function(socket, i) {
+    var sockets = follow_req.req.agent.sockets[host] || []
+    sockets.forEach(function(socket, i) {
       t.isNot(socket, follow_req.req.connection, 'The changes follower is not socket '+i+' in the agent pool')
     })
 
