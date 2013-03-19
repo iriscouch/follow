@@ -170,12 +170,12 @@ Follow is happy to retry over and over, for all eternity. It will only emit an e
 
 Follow uses [node-tap][tap]. If you clone this Git repository, tap is included.
 
-    $ ./node_modules/.bin/tap test
-    ok test/couch.js ...................................... 10/10
-    ok test/follow.js ..................................... 68/68
-    ok test/issues/10.js .................................. 10/10
-    ok test/issues.js ..................................... 43/43
-    ok test/stream.js ................................... 299/299
+    $ ./node_modules/.bin/tap test/*.js test/issues/*.js
+    ok test/couch.js ...................................... 11/11
+    ok test/follow.js ..................................... 69/69
+    ok test/issues.js ..................................... 44/44
+    ok test/stream.js ................................... 300/300
+    ok test/issues/10.js .................................. 11/11
     total ............................................... 435/435
 
     ok
