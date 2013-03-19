@@ -460,6 +460,7 @@ test('Pausing and destroying a feed mid-stream', function(t) {
 
     var events = {'feed':[], 'http':[], 'request':[]}
       , firsts = {'feed':null, 'http':null, 'request':null}
+
     function ev(type, value) {
       var now = new Date
       firsts[type] = firsts[type] || now
@@ -543,11 +544,11 @@ test('Pausing and destroying a feed mid-stream', function(t) {
       })
 
       if(type == 'continuous') {
-        t.ok(events.http.length >= 10, 'Should have at least ten '+type+' HTTP events')
-        t.ok(events.request.length >= 10, 'Should have at least ten '+type+' request events')
+        t.ok(events.http.length >= 7, 'Should have at least seven '+type+' HTTP events')
+        t.ok(events.request.length >= 7, 'Should have at least seven '+type+' request events')
 
-        t.ok(events.http.length < 200, type+' HTTP events ('+events.http.length+') stop before 100')
-        t.ok(events.request.length < 200, type+' request events ('+events.request.length+') stop before 100')
+        t.ok(events.http.length < 200, type+' HTTP events ('+events.http.length+') stop before 200')
+        t.ok(events.request.length < 200, type+' request events ('+events.request.length+') stop before 200')
 
         var frac = events.http.length / bulk_docs_count
         t.ok(frac < 0.10, 'Percent of http events received ('+frac.toFixed(1)+'%) is less than 10% of the data')
