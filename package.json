@@ -9,11 +9,13 @@
                 , "url": "git://github.com/iriscouch/follow" }
 , "engines": [ "node" ]
 , "dependencies" : { "request" : "~2.16.2"
+                   , "browser-request" : "~0.2.2"
                    }
 , "devDependencies": { "tap": "~0.4.0"
                      , "traceback": "~0.3.0"
                      }
-
+, "browser": { "request" : "browser-request"
+             }
 , "main": "./api.js"
 , "bin": {"follow": "./cli.js"}
 }
