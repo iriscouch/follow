@@ -8,7 +8,7 @@
 , "repository": { "type": "git"
                 , "url": "git://github.com/iriscouch/follow" }
 , "engines": [ "node" ]
-, "dependencies" : { "request" : "~2.16.2"
+, "dependencies" : { "request" : "~2.30.0"
                    , "browser-request" : "~0.3.0"
                    , "debug": "~0.7.2"
                    }
