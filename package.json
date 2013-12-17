@@ -7,7 +7,7 @@
 , "homepage": "http://github.com/iriscouch/follow"
 , "repository": { "type": "git"
                 , "url": "git://github.com/iriscouch/follow" }
-, "engines": [ "node" ]
+, "engines": { "node": "0.10.x || 0.8.x" }
 , "dependencies" : { "request" : "~2.30.0"
                    , "browser-request" : "~0.3.0"
                    , "debug": "~0.7.2"
@@ -18,5 +18,6 @@
 , "browser": { "request" : "browser-request"
              }
 , "main": "./api.js"
+
 , "bin": {"follow": "./cli.js"}
 }
