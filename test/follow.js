@@ -92,6 +92,23 @@ test('Heartbeats', function(t) {
   })
 })
 
+test('Catchup events', function(t) {
+  t.ok(couch.rtt(), 'The couch RTT is known')
+
+  var feed = follow(couch.DB, function() {})
+  var last_seen = 0
+
+  feed.on('change', function(id) { last_seen = id })
+  feed.on('catchup', function(id) {
+    console.log('CATCHUP id=%j', id)
+
+    t.equal(last_seen, 3, 'The catchup event fires after the change event that triggered it')
+
+    feed.stop()
+    t.end()
+  })
+})
+
 test('Data due on a paused feed', function(t) {
   t.ok(couch.rtt(), 'The couch RTT is known')
   var HB = couch.rtt() * 5
