@@ -138,7 +138,6 @@ test('Data due on a paused feed', function(t) {
   feed.on('stop'     , function() { ev('stop')      })
 
   feed.on('change', function(change) {
-    console.error('CHANGE: %j', change)
     if(change.seq == 1) {
       feed.pause()
       // Stay paused long enough for three heartbeats to be overdue.
