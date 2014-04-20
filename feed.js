@@ -1,6 +1,5 @@
-// Core routines for event emitters
 //
-// Copyright 2011 Iris Couch
+// Copyright 2014 Iris Couch
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -14,49 +13,30 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-var lib = require('../lib')
-  , util = require('util')
-  , events = require('events')
-  , request = require('request')
-  , Changes = require('./stream').Changes
-  , querystring = require('querystring')
+var EE = require('events').EventEmitter;
+var util = require('util');
+var url = require('url');
+var ChangeStream = require('changes-stream');
+var debug = require('debug')('follow:feed');
+var http = require('http-https');
+var parse = require('parse-json-response');
 
-// Use the library timeout functions, primarily so the test suite can catch errors.
-var setTimeout = lib.setTimeout
-  , clearTimeout = lib.clearTimeout
+var HEARTBEAT_TIMEOUT_COEFFICIENT = 1.25;
 
-var DEFAULT_HEARTBEAT = 30000;
-var HEARTBEAT_TIMEOUT_COEFFICIENT = 1.25; // E.g. heartbeat 1000ms would trigger a timeout after 1250ms of no heartbeat.
-var DEFAULT_MAX_RETRY_SECONDS     = 60 * 60;
-var INITIAL_RETRY_DELAY           = 1000;
-var RESPONSE_GRACE_TIME           = 5000;
+util.inherits(Feed, EE);
 
-var FEED_PARAMETERS   = ['since', 'limit', 'feed', 'heartbeat', 'filter', 'include_docs', 'view', 'style'];
-
-var EventEmitter = events.EventEmitter2 || events.EventEmitter;
-
-
-util.inherits(Feed, EventEmitter);
 function Feed (opts) {
-  var self = this;
-  EventEmitter.call(self);
+  EE.call(this);
 
   opts = opts || {}
 
-  self.feed = 'continuous';
-  self.heartbeat         = DEFAULT_HEARTBEAT;
-  self.max_retry_seconds = DEFAULT_MAX_RETRY_SECONDS;
-  self.inactivity_ms = null;
+  this.feed = 'continuous';
+  this.heartbeat = 30 * 1000;
+  this.inactivity_ms = opts.inactivity_ms;
 
-  self.headers = {};
-  self.request = opts.request || {} // Extra options for potentially future versions of request. The caller can supply them.
-
-  self.since = 0;
-  self.is_paused = false
-  self.caught_up = false
-  self.retry_delay = INITIAL_RETRY_DELAY; // ms
-
-  self.query_params = {}; // Extra `req.query` values for filter functions
+  this.since = 0;
+  this.paused = false
+  this.caught_up = false
 
   if(typeof opts === 'string')
     opts = {'db': opts};
@@ -65,103 +45,97 @@ function Feed (opts) {
   delete opts.url
   delete opts.uri
 
+  // Overwrite any configuration
   Object.keys(opts).forEach(function(key) {
-    self[key] = opts[key];
-  })
+    this[key] = opts[key];
+  }, this)
 
-  self.pending = { request     : null
-                 , activity_at : null
-                 };
-} // Feed
+}
 
 Feed.prototype.start =
-Feed.prototype.follow = function follow_feed() {
-  var self = this;
+Feed.prototype.follow = function () {
 
-  if(!self.db)
+  if(!this.db)
     throw new Error('Database URL required');
 
-  if(self.feed !== 'continuous' && self.feed !== 'longpoll')
+  if(this.feed !== 'continuous' && this.feed !== 'longpoll')
     throw new Error('The only valid feed options are "continuous" and "longpoll"');
 
-  if(typeof self.heartbeat !== 'number')
+  if(typeof this.heartbeat !== 'number')
     throw new Error('Required "heartbeat" value');
 
-  self.log = lib.log4js.getLogger(self.db);
-  self.log.setLevel(process.env.follow_log_level || "info");
-
-  self.emit('start');
-  return self.confirm();
+  this.emit('start');
+  return this.confirm();
 }
 
-Feed.prototype.confirm = function confirm_feed() {
-  var self = this;
+Feed.prototype.confirm = function () {
 
-  self.db_safe = lib.scrub_creds(self.db);
+  this.safeDb = scrubCreds(this.db);
 
-  self.log.debug('Checking database: ' + self.db_safe);
-
-  var confirm_timeout = self.heartbeat * 3; // Give it time to look up the name, connect, etc.
-  var timeout_id = setTimeout(function() {
+  debug('confirming database');
+  // Give some extra time in case it takes a bit to get response
+  this.timer = setTimeout(function() {
     return self.die(new Error('Timeout confirming database: ' + self.db_safe));
-  }, confirm_timeout);
+  }, this.heartbeat * 3);
 
-  var headers = lib.JP(lib.JS(self.headers));
-  headers.accept = 'application/json';
-
-  var req = {'uri':self.db, 'headers':headers}
-  Object.keys(self.request).forEach(function(key) {
-    req[key] = self.request[key];
-  })
-
-  req = request(req, db_response)
-  self.emit('confirm_request', req)
-
-  function db_response(er, resp, body) {
-    clearTimeout(timeout_id);
-
-    if(er)
-      return self.die(er);
-
-    var db;
-    try {
-      db = JSON.parse(body)
-    } catch(json_er) {
-      return self.emit('error', json_er)
-    }
-
-    if(!db.db_name || !db.instance_start_time)
-      return self.emit('error', new Error('Bad DB response: ' + body));
-
-    self.original_db_seq = db.update_seq
-    self.log.debug('Confirmed db: ' + self.db_safe);
-    self.emit('confirm', db);
-
-    if(self.since == 'now') {
-      self.log.debug('Query since "now" is the same as query since -1')
-      self.since = -1
-    }
-
-    if(self.since == -1) {
-      self.log.debug('Query since '+self.since+' will start at ' + db.update_seq)
-      self.since = db.update_seq
-    } else if(self.since < 0) {
-      if(isNaN(db.update_seq))
-        return self.emit('error', new Error('DB requires specific id in "since"'));
-
-      self.log.debug('Query since '+self.since+' will start at ' + (db.update_seq + self.since + 1))
-      self.since = db.update_seq + self.since + 1
-    }
-
-    // If the next change would come after the current update_seq, just fake a catchup event now.
-    if(self.original_db_seq == self.since) {
-      self.caught_up = true
-      self.emit('catchup', db.update_seq)
-    }
-
-    return self.query();
+  var opts = url.parse(this.db);
+  opts.method = 'GET';
+  opts.headers = {
+    accept: 'application/json'
   }
+
+  var req = http.request(opts);
+  req.on('error', this._onError.bind(this));
+  req.on('response', parse(this._onConfirmRes.bind(this)));
+  req.end();
+
+  // Leave the same for consistency of user's api
+  var oldReq = { uri: this.db, headers: opts.headers };
+  this.emit('confirm_request', req)
+
 }
+
+Feed.prototype._onConfirmRes = function (err, data, res) {
+  if (err) {
+    return this.emit('error', new Error('Could not confirm couchdb ' + err.statusCode));
+  }
+
+  if (!data.db_name || !db.instance_start_time) {
+    return this.emit('error', new Error('Bad DB response ' + JSON.stringify(data)));
+  }
+  // Keep a reference to the whole object just in case and set the db seq
+  this.dbObj = data;
+  this.original_db_seq = data.update_seq;
+
+  debug('confirmed db ' + this.safeDb);
+  this.emit('confirm', data);
+
+  //
+  // Since we have confirmed the database at a particular update_seq
+  // right NOW, lets just query based on that number for consistency
+  //
+  this.since = this.since != 'now'
+    ? this.since
+    : this.original_db_seq;
+
+  if (isNaN(data.update_seq)) {
+    return this.emit('error', new Error('DB has bad update_seq value ' + data.update_seq));
+  }
+  //
+  // Fake the catchup event if we are starting from the current time period
+  // anyway
+  //
+  if (this.original_db_seq == this.since) {
+    this.caught_up = true;
+    this.emit('catchup', this.since);
+  }
+
+  this.changes();
+};
+
+Feed.prototype.changes = function () {
+
+};
 
 Feed.prototype.query = function query_feed() {
   var self = this;
@@ -500,33 +474,6 @@ Feed.prototype.stop = function(val) {
   self.emit('stop', val);
 }
 
-Feed.prototype.die = function(er) {
-  var self = this;
-
-  if(er)
-    self.log.fatal('Fatal error: ' + er.stack);
-
-  // Warn code executing later that death has occured.
-  self.dead = true
-
-  clearTimeout(self.retry_timer)
-  clearTimeout(self.inactivity_timer)
-  clearTimeout(self.pending.wait_timer)
-
-  self.inactivity_timer = null
-  self.pending.wait_timer = null
-
-  var req = self.pending.request;
-  self.pending.request = null;
-  if(req) {
-    self.log.debug('Destroying req ' + req.id());
-    destroy_req(req);
-  }
-
-  if(er)
-    self.emit('error', er);
-}
-
 Feed.prototype.on_change = function on_change(change) {
   var self = this;
 
@@ -600,39 +547,17 @@ Feed.prototype.on_inactivity = function on_inactivity() {
 }
 
 Feed.prototype.restart = function restart() {
-  var self = this
 
-  self.emit('restart')
+  this.emit('restart')
 
   // Kill ourselves and then start up once again
-  self.stop()
-  self.dead = false
-  self.start()
+  this.stop()
+  this.dead = false
+  this.start()
 }
 
-module.exports = { "Feed" : Feed
-                 };
-
-
-/*
- * Utilities
- */
-
-function destroy_req(req) {
-  if(req)
-    destroy_response(req.response)
-
-  if(req && typeof req.destroy == 'function')
-    req.destroy()
-}
-
-function destroy_response(response) {
-  if(!response)
-    return;
-
-  if(typeof response.abort === 'function')
-    response.abort();
-
-  if(response.connection)
-    response.connection.destroy();
+function scrubCreds (u) {
+  var temp = url.parse(u);
+  delete temp.auth;
+  return url.format(temp);
 }

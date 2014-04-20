@@ -1,6 +1,6 @@
 // The changes_couchdb API
 //
-// Copyright 2011 Iris Couch
+// Copyright 2014 Iris Couch
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -14,22 +14,20 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-var feed = require('./lib/feed')
-  , stream = require('./lib/stream')
+var Feed = require('./feed');
 
-function follow_feed(opts, cb) {
-  var ch_feed = new feed.Feed(opts);
-  ch_feed.on('error' , function(er) { return cb && cb.call(ch_feed, er) });
-  ch_feed.on('change', function(ch) { return cb && cb.call(ch_feed, null, ch) });
+module.exports = function follow (opts, cb) {
+  var feed = new Feed(opts);
+
+  feed.on('error' , function(err) { return cb && cb.call(feed, err) });
+  feed.on('change', function(change) { return cb && cb.call(feed, null, change) });
 
   // Give the caller a chance to hook into any events.
   process.nextTick(function() {
-    ch_feed.follow();
-  })
+    feed.follow();
+  });
 
-  return ch_feed;
+  return feed;
 }
 
-module.exports = follow_feed;
-module.exports.Feed = feed.Feed;
-module.exports.Changes = stream.Changes
+module.exports.Feed = Feed;
