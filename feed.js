@@ -21,11 +21,14 @@ var debug = require('debug')('follow:feed');
 var http = require('http-https');
 var parse = require('parse-json-response');
 
-var HEARTBEAT_TIMEOUT_COEFFICIENT = 1.25;
+var extend = util._extend;
+
+module.exports = Feed;
 
 util.inherits(Feed, EE);
 
 function Feed (opts) {
+  if (!(this instanceof Feed)) { return new Feed(opts) }
   EE.call(this);
 
   opts = opts || {}
@@ -38,6 +41,7 @@ function Feed (opts) {
   this.paused = false
   this.caught_up = false
 
+  this.reconnect = opts.reconnect || { minDelay: 100, maxDelay: 10000, retries: 3 }
   if(typeof opts === 'string')
     opts = {'db': opts};
 
@@ -48,7 +52,7 @@ function Feed (opts) {
   // Overwrite any configuration
   Object.keys(opts).forEach(function(key) {
     this[key] = opts[key];
-  }, this)
+  }, this);
 
 }
 
@@ -74,9 +78,8 @@ Feed.prototype.confirm = function () {
 
   debug('confirming database');
   // Give some extra time in case it takes a bit to get response
-  this.timer = setTimeout(function() {
-    return self.die(new Error('Timeout confirming database: ' + self.db_safe));
-  }, this.heartbeat * 3);
+  var error = new Error('Failed to confirm database');
+  this.timer = setTimeout(this._onTimeout.bind(this, error), this.heartbeat * 3);
 
   var opts = url.parse(this.db);
   opts.method = 'GET';
@@ -94,6 +97,16 @@ Feed.prototype.confirm = function () {
   this.emit('confirm_request', req)
 
 }
+
+//
+// When we timeout in these cases we should emit an error or restart a changes
+// feed
+//
+Feed.prototype._onTimeout = function (error) {
+  clearTimeout(this.timer);
+  this.timer = null
+  this.die(error);
+};
 
 Feed.prototype._onConfirmRes = function (err, data, res) {
   if (err) {
@@ -130,421 +143,113 @@ Feed.prototype._onConfirmRes = function (err, data, res) {
     this.emit('catchup', this.since);
   }
 
-  this.changes();
+  this.startChanges();
 };
 
-Feed.prototype.changes = function () {
+Feed.prototype.startChanges = function () {
+  this.changes = new ChangesStream({
+    db: this.db,
+    style: this.style,
+    since: this.since,
+    feed: this.feed,
+    filter: this.filter,
+    heartbeat: this.heartbeat,
+    inactivity_ms: this.inactivity_ms,
+    include_docs: this.include_docs,
+    // backwards compat for request options
+    rejectUnauthorized: this.request && this.request.strictSSL || this.rejectUnauthorized
+  });
 
+  this.changes.on('error', this._onError.bind(this));
+  this.changes.on('readable', this._onReadable.bind(this));
+  // What is the real usefulness?
+  this.changes.on('heartbeat', this._onHeartbeat.bind(this));
 };
 
-Feed.prototype.query = function query_feed() {
-  var self = this;
+Feed.prototype._onHeartbeat = function () {
+  this.emit('heartbeat');
+};
 
-  var query_params = JSON.parse(JSON.stringify(self.query_params));
-
-  FEED_PARAMETERS.forEach(function(key) {
-    if(key in self)
-      query_params[key] = self[key];
-  })
-
-  if(typeof query_params.filter !== 'string')
-    delete query_params.filter;
-
-  if(typeof self.filter === 'function' && !query_params.include_docs) {
-    self.log.debug('Enabling include_docs for client-side filter');
-    query_params.include_docs = true;
-  }
-
-  // Limit the response size for longpoll.
-  var poll_size = 100;
-  if(query_params.feed == 'longpoll' && (!query_params.limit || query_params.limit > poll_size))
-    query_params.limit = poll_size;
-
-  var feed_url = self.db + '/_changes?' + querystring.stringify(query_params);
-
-  self.headers.accept = self.headers.accept || 'application/json';
-  var req = { method : 'GET'
-            , uri    : feed_url
-            , headers: self.headers
-            , encoding: 'utf-8'
-            }
-
-  req.changes_query = query_params;
-  Object.keys(self.request).forEach(function(key) {
-    req[key] = self.request[key];
-  })
-
-  var now = new Date
-    , feed_ts = lib.JDUP(now)
-    , feed_id = process.env.follow_debug ? feed_ts.match(/\.(\d\d\d)Z$/)[1] : feed_ts
-
-  self.log.debug('Feed query ' + feed_id + ': ' + lib.scrub_creds(feed_url))
-  var feed_request = request(req)
-
-  feed_request.on('response', function(res) {
-    self.log.debug('Remove feed from agent pool: ' + feed_id)
-    feed_request.req.socket.emit('agentRemove')
-
-    // Simulate the old onResponse option.
-    on_feed_response(null, res, res.body)
-  })
-
-  feed_request.on('error', on_feed_response)
-
-  // The response headers must arrive within one heartbeat.
-  var response_timer = setTimeout(response_timed_out, self.heartbeat + RESPONSE_GRACE_TIME)
-    , timed_out = false
-
-  return self.emit('query', feed_request)
-
-  function response_timed_out() {
-    self.log.debug('Feed response timed out: ' + feed_id)
-    timed_out = true
-    return self.retry()
-  }
-
-  function on_feed_response(er, resp, body) {
-    clearTimeout(response_timer)
-
-    if((resp !== undefined && resp.body) || body)
-      return self.die(new Error('Cannot handle a body in the feed response: ' + lib.JS(resp.body || body)))
-
-    if(timed_out) {
-      self.log.debug('Ignoring late response: ' + feed_id);
-      return destroy_response(resp);
+Feed.prototype._onReadable = function () {
+  var change;
+  //
+  // Unless we get paused read and emit all the changes out of the buffer
+  //
+  while (!this.paused && null !== (change = this.changes.read())) {
+    if (this.original_db_seq == change.seq) {
+      this.caught_up = true;
+      this.emit('catchup', change.seq);
     }
 
-    if(er) {
-      self.log.debug('Request error ' + feed_id + ': ' + er.stack);
-      destroy_response(resp);
-      return self.retry();
+    // We totally do this in changes stream as well but whatever
+    this.since = change.seq;
+    this.emit('change', change);
+  }
+};
+
+//
+// If the changes-stream ACTUALLY emits an error, we technically should
+// run a cleanup and just create a new one
+//
+Feed.prototype._onError = function (err) {
+  var reconnect = extend({}, this.reconnect);
+  return back(function (fail, backoff) {
+    if (fail) {
+      return this.emit('error', err);
     }
+    this.die();
+    this.startChanges();
+  }, reconnect);
+};
 
-    if(resp.statusCode !== 200) {
-      self.log.debug('Bad changes response ' + feed_id + ': ' + resp.statusCode);
-      destroy_response(resp);
-      return self.retry();
-    }
-
-    self.log.debug('Good response: ' + feed_id);
-    self.retry_delay = INITIAL_RETRY_DELAY;
-
-    self.emit('response', resp);
-
-    var changes_stream = new Changes
-    changes_stream.log = lib.log4js.getLogger('stream ' + self.db)
-    changes_stream.log.setLevel(self.log.level.levelStr)
-    changes_stream.feed = self.feed
-    feed_request.pipe(changes_stream)
-
-    changes_stream.created_at = now
-    changes_stream.id = function() { return feed_id }
-    return self.prep(changes_stream)
+//
+// It should literally just be this simple
+//
+Feed.prototype.pause = function () {
+  if (!this.paused) {
+    this.paused = true;
+    this.changes.pause();
+    this.emit('pause');
   }
-}
+};
 
-Feed.prototype.prep = function prep_request(changes_stream) {
-  var self = this;
-
-  var now = new Date;
-  self.pending.request = changes_stream;
-  self.pending.activity_at = now;
-  self.pending.wait_timer  = null;
-
-  // Just re-run the pause or resume to do the needful on changes_stream (self.pending.request).
-  if(self.is_paused)
-    self.pause()
-  else
-    self.resume()
-
-  // The inactivity timer is for time between *changes*, or time between the
-  // initial connection and the first change. Therefore it goes here.
-  self.change_at = now;
-  if(self.inactivity_ms) {
-    clearTimeout(self.inactivity_timer);
-    self.inactivity_timer = setTimeout(function() { self.on_inactivity() }, self.inactivity_ms);
+//
+// It feels weird to have two layers of this but meh
+// the underlying socket in the changes stream needs to be done with
+// readable
+//
+Feed.prototype.resume = function () {
+  if (this.paused) {
+    this.emit('resume');
+    this.paused = false;
+    this.changes.resume();
   }
-
-  changes_stream.on('heartbeat', handler_for('heartbeat'))
-  changes_stream.on('error', handler_for('error'))
-  changes_stream.on('data', handler_for('data'))
-  changes_stream.on('end', handler_for('end'))
-
-  return self.wait();
-
-  function handler_for(ev) {
-    var name = 'on_couch_' + ev;
-    var inner_handler = self[name];
-
-    return handle_confirmed_req_event;
-    function handle_confirmed_req_event() {
-      if(self.pending.request === changes_stream)
-        return inner_handler.apply(self, arguments);
-
-      if(!changes_stream.created_at)
-        return self.die(new Error("Received data from unknown request")); // Pretty sure this is impossible.
-
-      var s_to_now = (new Date() - changes_stream.created_at) / 1000;
-      var s_to_req = '[no req]';
-      if(self.pending.request)
-        s_to_req = (self.pending.request.created_at - changes_stream.created_at) / 1000;
-
-      var msg = ': ' + changes_stream.id() + ' to_req=' + s_to_req + 's, to_now=' + s_to_now + 's';
-
-      if(ev == 'end' || ev == 'data' || ev == 'heartbeat') {
-        self.log.debug('Old "' + ev + '": ' + changes_stream.id())
-        return destroy_req(changes_stream)
-      }
-
-      self.log.warn('Old "'+ev+'"' + msg);
-    }
-  }
-}
-
-Feed.prototype.wait = function wait_for_event() {
-  var self = this;
-  self.emit('wait');
-
-  if(self.pending.wait_timer)
-    return self.die(new Error('wait() called but there is already a wait_timer: ' + self.pending.wait_timer));
-
-  var timeout_ms = self.heartbeat * HEARTBEAT_TIMEOUT_COEFFICIENT;
-  var req_id = self.pending.request && self.pending.request.id()
-  var msg = 'Req ' + req_id + ' timeout=' + timeout_ms;
-  if(self.inactivity_ms)
-    msg += ', inactivity=' + self.inactivity_ms;
-  msg += ': ' + self.db_safe;
-
-  self.log.debug(msg);
-  self.pending.wait_timer = setTimeout(function() { self.on_timeout() }, timeout_ms);
-}
-
-Feed.prototype.got_activity = function() {
-  var self = this
-
-  if (self.dead)
-    return
-
-  if(! self.pending.wait_timer)
-    return self.die(new Error('Cannot find wait timer'))
-
-  clearTimeout(self.pending.wait_timer)
-  self.pending.wait_timer = null
-  self.pending.activity_at = new Date
-}
-
-
-Feed.prototype.pause = function() {
-  var self = this
-    , was_paused = self.is_paused
-
-  // Emit pause after pausing the stream, to allow listeners to react.
-  self.is_paused = true
-  if(self.pending && self.pending.request && self.pending.request.pause)
-    self.pending.request.pause()
-  else
-    self.log.warn('No pending request to pause')
-
-  if(!was_paused)
-    self.emit('pause')
-}
-
-Feed.prototype.resume = function() {
-  var self = this
-    , was_paused = self.is_paused
-
-  // Emit resume before resuming the data feed, to allow listeners to prepare.
-  self.is_paused = false
-  if(was_paused)
-    self.emit('resume')
-
-  if(self.pending && self.pending.request && self.pending.request.resume)
-    self.pending.request.resume()
-  else
-    self.log.warn('No pending request to resume')
-}
-
-
-Feed.prototype.on_couch_heartbeat = function on_couch_heartbeat() {
-  var self = this
-
-  self.got_activity()
-  if(self.dead)
-    return self.log.debug('Skip heartbeat processing for dead feed')
-
-  self.emit('heartbeat')
-
-  if(self.dead)
-    return self.log.debug('No wait: heartbeat listener stopped this feed')
-  self.wait()
-}
-
-Feed.prototype.on_couch_data = function on_couch_data(change) {
-  var self = this;
-  self.log.debug('Data from ' + self.pending.request.id());
-
-  self.got_activity()
-  if(self.dead)
-    return self.log.debug('Skip data processing for dead feed')
-
-  // The changes stream guarantees that this data is valid JSON.
-  change = JSON.parse(change)
-
-  //self.log.debug('Object:\n' + util.inspect(change));
-  if('last_seq' in change) {
-    self.log.warn('Stopping upon receiving a final message: ' + JSON.stringify(change))
-    var del_er = new Error('Database deleted after change: ' + change.last_seq)
-    del_er.deleted = true
-    del_er.last_seq = change.last_seq
-    return self.die(del_er)
-  }
-
-  if(!change.seq)
-    return self.die(new Error('Change has no .seq field: ' + JSON.stringify(change)))
-
-  self.on_change(change)
-
-  // on_change() might work its way all the way to a "change" event, and the listener
-  // might call .stop(), which means among other things that no more events are desired.
-  // The die() code sets a self.dead flag to indicate this.
-  if(self.dead)
-    return self.log.debug('No wait: change listener stopped this feed')
-  self.wait()
-}
-
-Feed.prototype.on_timeout = function on_timeout() {
-  var self = this;
-  self.log.debug('Timeout')
-
-  var now = new Date;
-  var elapsed_ms = now - self.pending.activity_at;
-
-  self.emit('timeout', {elapsed_ms:elapsed_ms, heartbeat:self.heartbeat, id:self.pending.request.id()});
-
-  /*
-  var msg = ' for timeout after ' + elapsed_ms + 'ms; heartbeat=' + self.heartbeat;
-  if(!self.pending.request.id)
-    self.log.warn('Closing req (no id) ' + msg + ' req=' + util.inspect(self.pending.request));
-  else
-    self.log.warn('Closing req ' + self.pending.request.id() + msg);
-  */
-
-  destroy_req(self.pending.request);
-  self.retry()
-}
-
-Feed.prototype.retry = function retry() {
-  var self = this;
-
-  clearTimeout(self.pending.wait_timer);
-  self.pending.wait_timer = null;
-
-  self.log.debug('Retry since=' + self.since + ' after ' + self.retry_delay + 'ms ')
-  self.emit('retry', {since:self.since, after:self.retry_delay, db:self.db_safe});
-
-  self.retry_timer = setTimeout(function() { self.query() }, self.retry_delay);
-
-  var max_retry_ms = self.max_retry_seconds * 1000;
-  self.retry_delay *= 2;
-  if(self.retry_delay > max_retry_ms)
-    self.retry_delay = max_retry_ms;
-}
-
-Feed.prototype.on_couch_end = function on_couch_end() {
-  var self = this;
-
-  self.log.debug('Changes feed ended ' + self.pending.request.id());
-  self.pending.request = null;
-  return self.retry();
-}
-
-Feed.prototype.on_couch_error = function on_couch_error(er) {
-  var self = this;
-
-  self.log.debug('Changes query eror: ' + lib.JS(er.stack));
-  return self.retry();
-}
+};
 
 Feed.prototype.stop = function(val) {
-  var self = this
-  self.log.debug('Stop')
+  debug('Stop')
 
   // Die with no errors.
   self.die()
   self.emit('stop', val);
-}
+};
 
-Feed.prototype.on_change = function on_change(change) {
-  var self = this;
-
-  if(!change.seq)
-    return self.die(new Error('No seq value in change: ' + lib.JS(change)));
-
-  if(change.seq == self.since) {
-    self.log.debug('Bad seq value ' + change.seq + ' since=' + self.since);
-    return destroy_req(self.pending.request);
+//
+// Kill the internal changes stream
+//
+Feed.prototype.die = function (err) {
+  debug('destroy the internal changes stream')
+  if (this.changes) {
+    this.changes.destroy();
+    this.changes = null;
   }
+  this.dead = true;
+  this.emit('die');
 
-  if(!self.caught_up && change.seq == self.original_db_seq) {
-    self.caught_up = true
-    self.emit('catchup', change.seq)
+  if (err) {
+    this.emit('error', err);
   }
-
-  if(typeof self.filter !== 'function')
-    return self.on_good_change(change);
-
-  if(!change.doc)
-    return self.die(new Error('Internal filter needs .doc in change ' + change.seq));
-
-  // Don't let the filter mutate the real data.
-  var doc = lib.JDUP(change.doc);
-  var req = lib.JDUP({'query': self.pending.request.changes_query});
-
-  var result = false;
-  try {
-    result = self.filter.apply(null, [doc, req]);
-  } catch (er) {
-    self.log.debug('Filter error', er);
-  }
-
-  result = (result && true) || false;
-  if(result) {
-    self.log.debug('Builtin filter PASS for change: ' + change.seq);
-    return self.on_good_change(change);
-  } else
-    self.log.debug('Builtin filter FAIL for change: ' + change.seq);
-}
-
-Feed.prototype.on_good_change = function on_good_change(change) {
-  var self = this;
-
-  if(self.inactivity_ms && !self.inactivity_timer)
-    return self.die(new Error('Cannot find inactivity timer during change'));
-
-  clearTimeout(self.inactivity_timer);
-  self.inactivity_timer = null;
-  if(self.inactivity_ms)
-    self.inactivity_timer = setTimeout(function() { self.on_inactivity() }, self.inactivity_ms);
-
-  self.change_at = new Date;
-  self.since = change.seq;
-  self.emit('change', change);
-}
-
-Feed.prototype.on_inactivity = function on_inactivity() {
-  var self = this;
-  var now = new Date;
-  var elapsed_ms = now - self.change_at;
-  var elapsed_s  = elapsed_ms / 1000;
-
-  //
-  // Since this is actually not fatal, lets just totally reset and start a new
-  // request, JUST in case something was bad.
-  //
-  self.log.debug('Req ' + self.pending.request.id() + ' made no changes for ' + elapsed_s + 's');
-  return self.restart();
-
-}
+};
 
 Feed.prototype.restart = function restart() {
 
@@ -553,7 +258,7 @@ Feed.prototype.restart = function restart() {
   // Kill ourselves and then start up once again
   this.stop()
   this.dead = false
-  this.start()
+  this.start();
 }
 
 function scrubCreds (u) {
