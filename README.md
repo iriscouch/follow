@@ -1,4 +1,4 @@
-# Follow: CouchDB changes notifier for NodeJS
+# Follow: CouchDB changes and db updates notifier for NodeJS
 
 Follow (upper-case *F*) comes from an internal Iris Couch project used in production for over a year. It works in the browser (beta) and is available as an NPM module.
 
@@ -41,6 +41,13 @@ If CouchDB permanently crashes, there is an option of failure modes:
 
 * **Default:** Simply never call back with a change again
 * **Optional:** Specify an *inactivity* timeout. If no changes happen by the timeout, Follow will signal an error.
+
+## DB Updates
+
+If the db url ends with `/_db_updates`, Follow will provide a
+[_db_updates](http://docs.couchdb.org/en/latest/api/server/common.html?highlight=db_updates#get--_db_updates) feed.
+
+Note that this feature is available as of CouchDB 1.4.
 
 ### Simple API: follow(options, callback)
 
