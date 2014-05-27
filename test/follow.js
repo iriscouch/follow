@@ -92,6 +92,21 @@ test('Heartbeats', function(t) {
   })
 })
 
+test('Catchup events', function(t) {
+  t.ok(couch.rtt(), 'The couch RTT is known')
+
+  var feed = follow(couch.DB, function() {})
+  var last_seen = 0
+
+  feed.on('change', function(change) { last_seen = change.seq })
+  feed.on('catchup', function(id) {
+    t.equal(last_seen, 3, 'The catchup event fires after the change event that triggered it')
+    t.equal(id       , 3, 'The catchup event fires on the seq_id of the latest change')
+    feed.stop()
+    t.end()
+  })
+})
+
 test('Data due on a paused feed', function(t) {
   t.ok(couch.rtt(), 'The couch RTT is known')
   var HB = couch.rtt() * 5
@@ -121,7 +136,6 @@ test('Data due on a paused feed', function(t) {
   feed.on('stop'     , function() { ev('stop')      })
 
   feed.on('change', function(change) {
-    console.error('CHANGE: %j', change)
     if(change.seq == 1) {
       feed.pause()
       // Stay paused long enough for three heartbeats to be overdue.
@@ -186,25 +200,28 @@ test('Data due on a paused feed', function(t) {
 })
 
 test('Events for DB confirmation and hitting the original seq', function(t) {
+  t.plan(7)
   var feed = follow(couch.DB, on_change)
 
-  var events = { 'confirm':null, 'catchup':null }
+  var events = { 'confirm':null }
   feed.on('confirm', function(db) { events.confirm = db })
-  feed.on('catchup', function(seq) { events.catchup = seq })
+  feed.on('catchup', caught_up)
 
+  // This will run 3 times.
   function on_change(er, ch) {
     t.false(er, 'No problem with the feed')
     if(ch.seq == 3) {
       t.ok(events.confirm, 'Confirm event fired')
       t.equal(events.confirm && events.confirm.db_name, 'follow_test', 'Confirm event returned the Couch DB object')
       t.equal(events.confirm && events.confirm.update_seq, 3, 'Confirm event got the update_seq right')
-
-      t.ok(events.catchup, 'Catchup event fired')
-      t.equal(events.catchup, 3, 'Catchup event fired on update 3')
-
-      feed.stop()
-      t.end()
     }
+  }
+
+  function caught_up(seq) {
+    t.equal(seq, 3, 'Catchup event fired on update 3')
+
+    feed.stop()
+    t.end()
   }
 })
 

@@ -2,6 +2,7 @@
 , "version": "0.11.2"
 , "author": { "name": "Jason Smith"
             , "email": "jhs@iriscouch.com" }
+, "contributors": [ "Jarrett Cruger <jcrugzz@gmail.com>" ]
 , "description": "Extremely robust, fault-tolerant CouchDB changes follower"
 , "license": "Apache 2.0"
 , "keywords": ["couchdb", "changes", "sleep", "sleepy"]
