@@ -544,8 +544,8 @@ test('Pausing and destroying a feed mid-stream', function(t) {
       })
 
       if(type == 'continuous') {
-        t.ok(events.http.length >= 7, 'Should have at least seven '+type+' HTTP events')
-        t.ok(events.request.length >= 7, 'Should have at least seven '+type+' request events')
+        t.ok(events.http.length >= 6, 'Should have at least seven '+type+' HTTP events')
+        t.ok(events.request.length >= 6, 'Should have at least seven '+type+' request events')
 
         t.ok(events.http.length < 200, type+' HTTP events ('+events.http.length+') stop before 200')
         t.ok(events.request.length < 200, type+' request events ('+events.request.length+') stop before 200')
