@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Export Follow in browser-friendly format.
 //
-// Copyright 2011 Iris Couch
+// Copyright 2011 Jason Smith, Jarrett Cruger and contributors
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
