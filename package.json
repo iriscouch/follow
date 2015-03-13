@@ -9,7 +9,7 @@
 , "homepage": "http://github.com/iriscouch/follow"
 , "repository": { "type": "git"
                 , "url": "git://github.com/iriscouch/follow" }
-, "engines": { "node": "0.10.x || 0.8.x" }
+, "engines": { "node": "0.12.x || 0.10.x || 0.8.x" }
 , "dependencies" : { "request" : "~2.44.0"
                    , "browser-request" : "~0.3.0"
                    , "debug": "^2.1.0"
