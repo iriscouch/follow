@@ -9,10 +9,12 @@ var tap = require('tap')
 
 var follow = require('../api')
   , DB = process.env.db || 'http://localhost:5984/follow_test'
+  , DB_UPDATES = process.env.db_updates || 'http://localhost:5984/_db_updates'
   , RTT = null
 
 
 module.exports = { 'DB': DB
+                 , 'DB_UPDATES': DB_UPDATES
                  , 'rtt' : get_rtt
                  , 'redo': redo_couch
                  , 'setup': setup_test

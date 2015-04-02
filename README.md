@@ -50,6 +50,12 @@ If CouchDB permanently crashes, there is an option of failure modes:
 If the db url ends with `/_db_updates`, Follow will provide a
 [_db_updates](http://docs.couchdb.org/en/latest/api/server/common.html?highlight=db_updates#get--_db_updates) feed.
 
+For each change, Follow will emit a `change` event containing:
+
+* `type`: `created`, `updated` or `deleted`.
+* `db_name`: Name of the database where the change occoured.
+* `ok`: Event operation status (boolean).
+
 Note that this feature is available as of CouchDB 1.4.
 
 ### Simple API: follow(options, callback)
