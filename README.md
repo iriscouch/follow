@@ -86,6 +86,9 @@ Besides the CouchDB options, more are available:
 
 * `headers` | Object with HTTP headers to add to the request
 * `inactivity_ms` | Maximum time to wait between **changes**. Omitting this means no maximum.
+* `max_retry_seconds` | Maximum time to wait between retries (default: 360 seconds)
+* `initial_retry_delay` | Time to wait before the first retry, in milliseconds (default 1000 milliseconds)
+* `response_grace_time` | Extra time to wait before timing out, in milliseconds (default 5000 milliseconds)
 
 ## Object API
 
