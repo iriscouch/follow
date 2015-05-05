@@ -247,20 +247,25 @@ test('Handle a deleted database', function(t) {
 })
 
 test('Follow _db_updates', function (t) {
-    var db_name = couch.DB.split('/').slice(-1)[0];
-    var feed = new follow.Feed({db: couch.DB_UPDATES});
-    feed.on('error', function (error) {
-        t.false(error, 'Error in feed ' + error);
-    });
-    feed.on('change', function (change) {
-      t.ok(change, 'Received a change ' + JSON.stringify(change));
-      t.equal(change.type, 'updated', 'Change should be of type "updated');
-      t.equal(change.db_name, db_name, 'Change should have db_name with the name of the db where the change occoured.');
+  var count = 0;
+  var types = ['created', 'deleted'];
+  var db_name = couch.DB.split('/').slice(-1)[0];
+  var feed = new follow.Feed({db: couch.DB_UPDATES});
+  feed.on('error', function (error) {
+    t.false(error, 'Error in feed ' + error);
+  });
+
+  feed.on('change', function (change) {
+    t.ok(change, 'Received a change ' + JSON.stringify(change));
+    t.equal(change.type, types[count], 'Change should be of type "' + types[count] + '"');
+    t.equal(change.db_name, db_name + 1, 'Change should have db_name with the name of the db where the change occoured.');
+    if (++count === 2) {
       feed.stop();
       t.end();
-    });
-    feed.start();
-    couch.make_data(1, function (result) {
-        t.ok(result, 'Created test data');
-    });
+    }
+  });
+  feed.start();
+  couch.create_and_delete_db(t, function () {
+    t.ok(true, 'things happened');
+  });
 });

@@ -19,6 +19,7 @@ module.exports = { 'DB': DB
                  , 'redo': redo_couch
                  , 'setup': setup_test
                  , 'make_data': make_data
+                 , 'create_and_delete_db': create_and_delete_db
                  }
 
 
@@ -87,6 +88,17 @@ function init_db(t, callback) {
   })
 }
 
+function create_and_delete_db(t, callback) {
+  request.put({ uri: DB + 1, json: true}, function (er, res) {
+    t.false(er, 'create test db');
+    request.del({uri: DB +1, json: true}, function (er, res) {
+      t.false(er, 'Clear old test DB: ' + DB)
+      t.ok(!res.body.error);
+      callback();
+    });
+  });
+}
+
 
 function make_data(minimum_size, callback) {
   var payload = {'docs':[]}
@@ -110,7 +122,7 @@ function make_data(minimum_size, callback) {
     payload.docs.push(doc)
   }
 
-  request.post({'uri':DB+'/_bulk_docs', 'json':payload}, function(er, res) {
+  request.post({'uri':DB+'/_bulk_docs', 'json':payload}, function(er, res, body) {
     if(er) throw er
 
     if(res.statusCode != 201)
@@ -119,10 +131,7 @@ function make_data(minimum_size, callback) {
     if(res.body.length != payload.docs.length)
       throw new Error('Should have results for '+payload.docs.length+' doc insertions')
 
-    if(res.body.length < 1500)
-      throw new Error('Seems like at least 1,500 docs should have been added: ' + res.body.length)
-
-    res.body.forEach(function(result) {
+    body.forEach(function(result) {
       if(!result || !result.id || !result.rev)
         throw new Error('Bad bulk_docs response: ' + util.inspect(result))
     })
