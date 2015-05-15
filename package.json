@@ -1,5 +1,5 @@
 { "name": "follow"
-, "version": "0.11.5"
+, "version": "0.12.0"
 , "author": { "name": "Jason Smith"
             , "email": "jhs@iriscouch.com" }
 , "contributors": [ "Jarrett Cruger <jcrugzz@gmail.com>" ]
