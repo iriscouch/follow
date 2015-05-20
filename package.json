@@ -4,7 +4,7 @@
             , "email": "jhs@iriscouch.com" }
 , "contributors": [ "Jarrett Cruger <jcrugzz@gmail.com>" ]
 , "description": "Extremely robust, fault-tolerant CouchDB changes follower"
-, "license": "Apache 2.0"
+, "license": "Apache-2.0"
 , "keywords": ["couchdb", "changes", "sleep", "sleepy"]
 , "homepage": "http://github.com/iriscouch/follow"
 , "repository": { "type": "git"
