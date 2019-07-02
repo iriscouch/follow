@@ -163,7 +163,7 @@ Once you've got one, you can subscribe to these events:
 * **start** | Before any i/o occurs
 * **confirm_request** | `function(req)` | The database confirmation request is sent; passed the `request` object
 * **confirm** | `function(db_obj)` | The database is confirmed; passed the couch database object
-* **change** | `function(change)` | A change occured; passed the change object from CouchDB
+* **change** | `function(change)` | A change occurred; passed the change object from CouchDB
 * **catchup** | `function(seq_id)` | The feed has caught up to the *update_seq* from the confirm step. Assuming no subsequent changes, you have seen all the data.
 * **wait** | Follow is idle, waiting for the next data chunk from CouchDB
 * **timeout** | `function(info)` | Follow did not receive a heartbeat from couch in time. The passed object has `.elapsed_ms` set to the elapsed time
